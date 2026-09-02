@@ -10,11 +10,11 @@ const ASSET_TYPES = [
 ];
 
 const STATUSES = [
-  { id: "not_started", label: "Not Started", color: "#3a3a3a", bg: "#1a1a1a" },
-  { id: "brief_ready", label: "Brief Ready", color: "#6b8afd", bg: "#1a2240" },
-  { id: "in_production", label: "In Production", color: "#f0a030", bg: "#2a2010" },
-  { id: "in_review", label: "In Review", color: "#c084fc", bg: "#231a30" },
-  { id: "approved", label: "Approved", color: "#4ade80", bg: "#1a2a1a" },
+  { id: "not_started", label: "Not Started", color: "#5b6384", bg: "rgba(91,99,132,0.15)" },
+  { id: "brief_ready", label: "Brief Ready", color: "#6b8afd", bg: "rgba(107,138,253,0.12)" },
+  { id: "in_production", label: "In Production", color: "#f0a030", bg: "rgba(240,160,48,0.12)" },
+  { id: "in_review", label: "In Review", color: "#c084fc", bg: "rgba(192,132,252,0.12)" },
+  { id: "approved", label: "Approved", color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
 ];
 
 const TYPE_COLORS = {
@@ -744,9 +744,9 @@ function StatusBadge({ status, onClick, small, disabled }) {
 
 function StatusMenu({ current, onSelect, alignRight = true }) {
   return (
-    <div onClick={e => e.stopPropagation()} style={{ position: "absolute", [alignRight ? "right" : "left"]: 0, top: "110%", background: "#181818", border: "1px solid #2a2a2a", borderRadius: 6, padding: 4, zIndex: 100, minWidth: 140, boxShadow: "0 8px 24px rgba(0,0,0,0.6)" }}>
+    <div onClick={e => e.stopPropagation()} style={{ position: "absolute", [alignRight ? "right" : "left"]: 0, top: "110%", background: "linear-gradient(180deg,#101a3c,#0b1230)", border: "1px solid rgba(120,150,255,0.22)", borderRadius: 10, padding: 5, zIndex: 100, minWidth: 150, boxShadow: "0 12px 36px rgba(0,0,0,0.7)" }}>
       {STATUSES.map(st => (
-        <button key={st.id} onClick={() => onSelect(st.id)} style={{ display: "block", width: "100%", textAlign: "left", background: current === st.id ? "#222" : "transparent", border: "none", color: st.color, padding: "7px 10px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", borderRadius: 3 }}>
+        <button key={st.id} onClick={() => onSelect(st.id)} style={{ display: "block", width: "100%", textAlign: "left", background: current === st.id ? "rgba(120,150,255,0.1)" : "transparent", border: "none", color: st.color, padding: "8px 11px", fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", borderRadius: 7 }}>
           {current === st.id ? "● " : "○ "}{st.label}
         </button>
       ))}
@@ -775,22 +775,22 @@ function BriefPanel({ brief, onClose }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", justifyContent: "center", overflowY: "auto", padding: "40px 16px" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#0e0e0e", border: "1px solid #222", borderRadius: 10, maxWidth: 720, width: "100%", padding: 24, alignSelf: "flex-start" }}>
+    <div className="brief-overlay" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="brief-modal">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.15em", color: "#6b8afd", textTransform: "uppercase", marginBottom: 4 }}>{brief.title}</div>
-            <div style={{ fontSize: 20, color: "#eee", fontWeight: 300 }}>{brief.subtitle}</div>
+            <div className="btitle">{brief.title}</div>
+            <div className="bname">{brief.subtitle}</div>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={copyAll} style={{ background: copied ? "#1a2a1a" : "#1a2240", border: `1px solid ${copied ? "#4ade8033" : "#6b8afd33"}`, color: copied ? "#4ade80" : "#6b8afd", borderRadius: 4, padding: "6px 14px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>{copied ? "Copied ✓" : "Copy Brief"}</button>
-            <button onClick={onClose} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#666", borderRadius: 4, padding: "6px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Close</button>
+            <button onClick={copyAll} className={`copy-btn${copied ? " done" : ""}`}>{copied ? "Copied ✓" : "Copy Brief"}</button>
+            <button onClick={onClose} className="close-btn">Close</button>
           </div>
         </div>
         {brief.sections.map((sec, i) => (
-          <div key={i} style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: "#555", textTransform: "uppercase", marginBottom: 8, borderBottom: "1px solid #1a1a1a", paddingBottom: 4 }}>{sec.heading}</div>
-            <pre style={{ fontFamily: "'SF Mono', 'Menlo', 'Consolas', monospace", fontSize: 12, color: "#bbb", whiteSpace: "pre-wrap", lineHeight: 1.7, margin: 0, background: "#0a0a0a", padding: 14, borderRadius: 6, border: "1px solid #151515" }}>{sec.content}</pre>
+          <div key={i} className="bsec">
+            <div className="bsec-h">{sec.heading}</div>
+            <pre>{sec.content}</pre>
           </div>
         ))}
       </div>
@@ -893,24 +893,24 @@ export default function CoreoProductionHub() {
   const propNotes = notes?.[`${selectedProperty}`] || [];
   const filledCount = ALL_SPEC_IDS.filter(f => specs[f]).length;
   const essFilled = ESSENTIAL_FIELDS.filter(f => specs[f.id]).length;
-  const iStyle = { width: "100%", background: "#0a0a0a", border: "1px solid #1c1c1c", color: "#ccc", borderRadius: 4, padding: "8px 10px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
-  const selStyle = { background: "#111", color: "#888", border: "1px solid #222", borderRadius: 4, padding: "7px 10px", fontSize: 11, fontFamily: "inherit", cursor: "pointer" };
+  const iStyle = { width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" };
+  const selStyle = { background: "rgba(7,11,30,.6)", color: "#aeb8e4", border: "1px solid rgba(120,150,255,.12)", borderRadius: 10, padding: "8px 12px", fontSize: 11, fontFamily: "inherit", cursor: "pointer" };
 
   const setSpec = (fieldId, val) => setPropertySpecs(prev => ({ ...prev, [selectedProperty]: { ...specs, [fieldId]: val } }));
 
   const renderField = (field) => (
-    <div key={field.id} style={field.multiline && editingSpecs ? { gridColumn: "1 / -1" } : {}}>
-      <div style={{ fontSize: 10, color: field.essential ? "#6b8afd88" : "#444", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>
-        {field.label}{field.essential && <span style={{ color: "#6b8afd", marginLeft: 3 }}>*</span>}
+    <div key={field.id} className="spec-field" style={field.multiline && editingSpecs ? { gridColumn: "1 / -1" } : {}}>
+      <div className="flabel" style={{ color: field.essential ? "var(--ink-dim)" : "var(--ink-dim)" }}>
+        {field.label}{field.essential && <span className="star">*</span>}
       </div>
       {editingSpecs ? (
         field.multiline ? (
-          <textarea value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} rows={3} style={{ ...iStyle, resize: "vertical" }} />
+          <textarea value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} rows={3} className="dinput" style={{ resize: "vertical" }} />
         ) : (
-          <input value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} style={iStyle} />
+          <input value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} className="dinput" />
         )
       ) : (
-        <div style={{ fontSize: 13, color: specs[field.id] ? "#ccc" : "#262626", lineHeight: 1.5 }}>{specs[field.id] || "—"}</div>
+        <div className={`fval${specs[field.id] ? "" : " empty"}`}>{specs[field.id] || "—"}</div>
       )}
     </div>
   );
@@ -1027,6 +1027,82 @@ export default function CoreoProductionHub() {
 .setg-btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
 .setg-btn.danger{background:transparent;border:1px solid rgba(255,80,110,.4);color:#ff8098}
 .setg-foot{font-size:11.5px;color:var(--ink-dim);text-align:center;margin-top:20px}
+
+/* ── detail page ── */
+.detail{max-width:960px;margin:0 auto;padding:20px 22px 60px;font-family:'Inter',sans-serif;color:var(--ink)}
+.detail *{box-sizing:border-box}
+.back{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;transition:.15s}
+.back:hover{color:var(--cyan)}
+.dhero{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:14px;flex-wrap:wrap}
+.dhero .typeline{font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.dhero h1{font-family:'Space Grotesk';font-size:26px;font-weight:400;color:var(--ink);margin:0;letter-spacing:-.01em}
+.dhero .subloc{font-size:13px;color:var(--ink-dim);margin-top:5px;display:flex;align-items:center;gap:6px}
+.dhero .score{text-align:right}
+.dhero .score .big{font-family:'Space Grotesk';font-size:42px;font-weight:300;letter-spacing:-.02em}
+.dhero .score .lab{font-size:10px;color:var(--ink-dim);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.dhero .mini-strip{display:flex;gap:4px;margin-top:10px;justify-content:flex-end}
+.dhero .mini-strip i{width:18px;height:6px;border-radius:3px}
+.dpanel{background:var(--surface);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(10px);margin-bottom:20px;overflow:hidden}
+.dpanel-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:8px}
+.dpanel-h .sec{font-size:11px;color:var(--ink-dim);letter-spacing:.12em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:9px}
+.dpanel-h .sec .ico{color:var(--cyan);font-size:14px}
+.dpanel-h .cnt{font-size:10px;color:var(--ink-dim)}
+.dpanel-body{padding:20px}
+.spec-toggle{display:flex;background:rgba(7,11,30,.6);border-radius:8px;border:1px solid var(--line);overflow:hidden}
+.spec-toggle button{background:transparent;color:var(--ink-dim);border:none;padding:5px 12px;font-size:10.5px;cursor:pointer;font-family:inherit;transition:.15s}
+.spec-toggle button.on{background:rgba(120,150,255,.12);color:var(--ink)}
+.edit-btn{background:transparent;border:1px solid var(--line-2);color:var(--ink-dim);border-radius:8px;padding:4px 14px;font-size:10.5px;cursor:pointer;font-family:inherit;transition:.15s}
+.edit-btn.editing{background:rgba(53,240,160,.1);border-color:rgba(53,240,160,.3);color:var(--appr)}
+.cat-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);overflow-x:auto}
+.cat-tab{background:transparent;color:var(--ink-dim);border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.15s}
+.cat-tab:hover{color:var(--ink-2)}
+.cat-tab.on{color:var(--ink);border-bottom-color:var(--cyan)}
+.cat-tab .cnt2{color:var(--appr);font-size:9px;margin-left:4px}
+.spec-hint{font-size:10.5px;color:var(--ink-dim);margin-bottom:14px}
+.spec-grid{display:grid;gap:12px}
+.spec-field .flabel{font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.spec-field .flabel .star{color:var(--cyan)}
+.spec-field .fval{font-size:13px;color:var(--ink);line-height:1.5}
+.spec-field .fval.empty{color:var(--ink-dim);opacity:.35}
+.dinput{width:100%;background:rgba(7,11,30,.6);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box}
+.dinput:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(63,179,203,.1)}
+.dinput::placeholder{color:var(--ink-dim)}
+.asset-row{background:linear-gradient(180deg,rgba(16,24,56,.5),rgba(11,17,42,.4));border:1px solid var(--line);border-radius:14px;padding:16px 20px;transition:.16s}
+.asset-row:hover{border-color:var(--line-2)}
+.asset-row .aheader{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.asset-row .aleft{display:flex;align-items:center;gap:14px}
+.asset-row .aicon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;background:rgba(7,11,30,.5);border:1px solid var(--line)}
+.asset-row .aname{font-family:'Space Grotesk';font-size:14px;font-weight:500;color:var(--ink)}
+.asset-row .awarn{font-size:10px;color:var(--warn);margin-top:3px;display:flex;align-items:center;gap:5px}
+.asset-row .aright{display:flex;align-items:center;gap:8px}
+.brief-btn{background:rgba(63,179,203,.1);border:1px solid rgba(63,179,203,.25);color:var(--cyan);border-radius:9px;padding:6px 13px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:.15s}
+.brief-btn:hover{background:rgba(63,179,203,.18)}
+.alink-area{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);padding-left:54px}
+.link-btn{background:transparent;border:1px dashed var(--line-2);color:var(--ink-dim);border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit}
+.link-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.link-save{background:rgba(53,240,160,.1);border:1px solid rgba(53,240,160,.3);color:var(--appr);border-radius:8px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:inherit}
+.link-cancel{background:transparent;border:1px solid var(--line-2);color:var(--ink-dim);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:inherit}
+.link-url{font-size:11.5px;color:var(--cyan);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+.link-url:hover{text-decoration:underline}
+.link-edit{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:10px;font-family:inherit}
+.link-edit:hover{color:var(--ink)}
+.notes-input{display:flex;gap:8px}
+.note-add{background:rgba(120,150,255,.1);border:1px solid var(--line-2);color:var(--ink-2);border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:.15s}
+.note-add:hover{background:rgba(120,150,255,.16)}
+.note-item{padding:10px 0;border-bottom:1px solid var(--line)}
+.note-item:last-child{border-bottom:none}
+.note-text{font-size:12.5px;color:var(--ink-2);line-height:1.5}
+.note-date{font-size:10px;color:var(--ink-dim);margin-top:4px}
+.brief-overlay{position:fixed;inset:0;background:rgba(4,7,20,.82);backdrop-filter:blur(6px);z-index:1000;display:flex;justify-content:center;overflow-y:auto;padding:40px 16px}
+.brief-modal{background:linear-gradient(180deg,#101a3c,#0b1230);border:1px solid var(--line-2);border-radius:18px;max-width:720px;width:100%;padding:28px;align-self:flex-start;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.brief-modal .btitle{font-size:10px;letter-spacing:.15em;color:var(--cyan);text-transform:uppercase;margin-bottom:4px}
+.brief-modal .bname{font-family:'Space Grotesk';font-size:22px;font-weight:400;color:var(--ink)}
+.brief-modal .copy-btn{background:rgba(63,179,203,.12);border:1px solid rgba(63,179,203,.25);color:var(--cyan);border-radius:9px;padding:7px 16px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500}
+.brief-modal .copy-btn.done{background:rgba(53,240,160,.12);border-color:rgba(53,240,160,.3);color:var(--appr)}
+.brief-modal .close-btn{background:transparent;border:1px solid var(--line-2);color:var(--ink-dim);border-radius:9px;padding:7px 14px;font-size:11px;cursor:pointer;font-family:inherit}
+.brief-modal .bsec{margin-bottom:22px}
+.brief-modal .bsec-h{font-size:10px;letter-spacing:.12em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.brief-modal pre{font-family:'SF Mono','Menlo','Consolas',monospace;font-size:12px;color:var(--ink-2);white-space:pre-wrap;line-height:1.7;margin:0;background:rgba(7,11,30,.6);padding:16px;border-radius:10px;border:1px solid var(--line)}
 @media (max-width:1080px){.grid{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap}.side>.panel{flex:1;min-width:280px}}
 @media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.pills{display:none}}
 @media (prefers-reduced-motion:reduce){.card,.seg .bar,.pl-bar>i,.btn-primary,.pill{transition:none!important}}
@@ -1054,70 +1130,66 @@ export default function CoreoProductionHub() {
 
       {/* ═══ PROPERTY DETAIL ═══ */}
       {selectedProperty && propDetail ? (
-        <div style={{ padding: isMobile ? 16 : 24, maxWidth: 960, margin: "0 auto" }}>
-          <button onClick={() => { setSelectedProperty(null); setEditingSpecs(false); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: 0, marginBottom: 20 }}>← Back</button>
+        <div className="detail">
+          <button className="back" onClick={() => { setSelectedProperty(null); setEditingSpecs(false); }}>← Back to portfolio</button>
 
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
+          <div className="dhero">
             <div>
-              <div style={{ fontSize: 11, color: TYPE_COLORS[propDetail.type] || "#666", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>#{propDetail.id} · {propDetail.type}</div>
-              <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 300, color: "#eee", margin: 0 }}>{propDetail.name}</h1>
-              <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>{propDetail.location}</div>
+              <div className="typeline">
+                <span style={{ color: TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }}>#{propDetail.id}</span>
+                <span className="tbadge" style={{ "--tc": TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }}>{propDetail.type}</span>
+              </div>
+              <h1>{propDetail.name}</h1>
+              <div className="subloc">⚲ {propDetail.location} · {propDetail.zone}</div>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 32, fontWeight: 200, color: "#4ade80" }}>{getProgress(propDetail.id)}/5</div>
-              <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase" }}>Assets Done</div>
+            <div className="score">
+              <div className="big" style={{ color: getProgress(propDetail.id) === 5 ? "var(--appr)" : "var(--cyan)" }}>{getProgress(propDetail.id)}<span style={{ fontSize: 20, color: "var(--ink-dim)" }}>/5</span></div>
+              <div className="lab">Assets Approved</div>
+              <div className="mini-strip">
+                {ASSET_TYPES.map(a => {
+                  const ok = getStatus(propDetail.id, a.id) === "approved";
+                  return <i key={a.id} style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} title={`${a.short} — ${ok ? "Approved" : "Not done"}`} />;
+                })}
+              </div>
             </div>
           </div>
 
           {/* SPECS */}
-          <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 20, overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: "1px solid #1a1a1a", flexWrap: "wrap", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 11, color: "#555", letterSpacing: "0.1em", textTransform: "uppercase" }}>Property Specs</span>
-                <span style={{ fontSize: 10, color: "#333" }}>{specMode === "essential" ? `${essFilled}/${ESSENTIAL_FIELDS.length} essential` : `${filledCount}/${ALL_SPEC_IDS.length}`}</span>
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <div style={{ display: "flex", background: "#0a0a0a", borderRadius: 4, border: "1px solid #1c1c1c", overflow: "hidden" }}>
+          <div className="dpanel">
+            <div className="dpanel-h">
+              <div className="sec"><span className="ico">◇</span> Property Specs <span className="cnt">{specMode === "essential" ? `${essFilled}/${ESSENTIAL_FIELDS.length} essential` : `${filledCount}/${ALL_SPEC_IDS.length}`}</span></div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="spec-toggle">
                   {[{ id: "essential", label: "Essentials" }, { id: "all", label: "All fields" }].map(m => (
-                    <button key={m.id} onClick={() => setSpecMode(m.id)} style={{
-                      background: specMode === m.id ? "#1a1a1a" : "transparent", color: specMode === m.id ? "#ccc" : "#444",
-                      border: "none", padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: "inherit",
-                    }}>{m.label}</button>
+                    <button key={m.id} className={specMode === m.id ? "on" : ""} onClick={() => setSpecMode(m.id)}>{m.label}</button>
                   ))}
                 </div>
-                <button onClick={() => setEditingSpecs(!editingSpecs)} style={{
-                  background: editingSpecs ? "#1a2a1a" : "none", border: `1px solid ${editingSpecs ? "#4ade8033" : "#333"}`,
-                  color: editingSpecs ? "#4ade80" : "#666", borderRadius: 4, padding: "3px 12px", fontSize: 10, cursor: "pointer", fontFamily: "inherit",
-                }}>{editingSpecs ? "Done" : "Edit"}</button>
+                <button className={`edit-btn${editingSpecs ? " editing" : ""}`} onClick={() => setEditingSpecs(!editingSpecs)}>{editingSpecs ? "Done ✓" : "Edit"}</button>
               </div>
             </div>
 
             {specMode === "essential" ? (
-              <div style={{ padding: 20 }}>
-                <div style={{ fontSize: 10, color: "#444", marginBottom: 14 }}>These 12 fields feed the generated briefs. Fill them first — the rest is optional detail under "All fields".</div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr", gap: editingSpecs ? 12 : 10 }}>
+              <div className="dpanel-body">
+                <div className="spec-hint">These 12 fields feed the generated briefs. Fill them first — the rest is optional detail under "All fields".</div>
+                <div className="spec-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr" }}>
                   {ESSENTIAL_FIELDS.map(renderField)}
                 </div>
               </div>
             ) : (
               <>
-                <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #1a1a1a", overflowX: "auto" }}>
+                <div className="cat-tabs">
                   {SPEC_CATEGORIES.map(cat => {
                     const filled = cat.fields.filter(f => specs[f.id]).length;
                     return (
-                      <button key={cat.id} onClick={() => setSpecTab(cat.id)} style={{
-                        background: specTab === cat.id ? "#0e0e0e" : "transparent", color: specTab === cat.id ? "#ddd" : "#444",
-                        border: "none", borderBottom: specTab === cat.id ? "2px solid #6b8afd" : "2px solid transparent",
-                        padding: "10px 14px", fontSize: 11, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                      }}>
-                        {cat.label} {filled > 0 && <span style={{ color: "#4ade80", fontSize: 9, marginLeft: 4 }}>{filled}</span>}
+                      <button key={cat.id} className={`cat-tab${specTab === cat.id ? " on" : ""}`} onClick={() => setSpecTab(cat.id)}>
+                        {cat.label} {filled > 0 && <span className="cnt2">{filled}</span>}
                       </button>
                     );
                   })}
                 </div>
-                <div style={{ padding: 20 }}>
+                <div className="dpanel-body">
                   {SPEC_CATEGORIES.filter(c => c.id === specTab).map(cat => (
-                    <div key={cat.id} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr", gap: editingSpecs ? 12 : 10 }}>
+                    <div key={cat.id} className="spec-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr" }}>
                       {cat.fields.map(renderField)}
                     </div>
                   ))}
@@ -1127,9 +1199,11 @@ export default function CoreoProductionHub() {
           </div>
 
           {/* ASSETS */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Assets & Briefs</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="dpanel" style={{ overflow: "visible" }}>
+            <div className="dpanel-h">
+              <div className="sec"><span className="ico">▸</span> Assets & Briefs</div>
+            </div>
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               {ASSET_TYPES.map(asset => {
                 const status = getStatus(propDetail.id, asset.id);
                 const deps = DEPS[asset.id] || [];
@@ -1137,20 +1211,17 @@ export default function CoreoProductionHub() {
                 const link = getLink(propDetail.id, asset.id);
                 const editLink = editingLink === `${propDetail.id}-${asset.id}`;
                 return (
-                  <div key={asset.id} style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: "14px 18px" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontSize: 18 }}>{asset.icon}</span>
+                  <div key={asset.id} className="asset-row">
+                    <div className="aheader">
+                      <div className="aleft">
+                        <div className="aicon">{asset.icon}</div>
                         <div>
-                          <div style={{ fontSize: 13, color: "#ddd" }}>{asset.label}</div>
-                          {blocked && status === "not_started" && <div style={{ fontSize: 10, color: "#f0a030", marginTop: 2 }}>⚠ Photos not approved yet — production usually starts after</div>}
+                          <div className="aname">{asset.label}</div>
+                          {blocked && status === "not_started" && <div className="awarn">⚠ Photos not approved yet — production usually starts after</div>}
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))} style={{
-                          background: "#1a2240", border: "1px solid #6b8afd22", color: "#6b8afd", borderRadius: 4,
-                          padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: "inherit",
-                        }}>Generate Brief</button>
+                      <div className="aright">
+                        <button className="brief-btn" onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))}>Generate Brief</button>
                         <div style={{ position: "relative" }}>
                           <StatusBadge status={status} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === `${propDetail.id}-${asset.id}` ? null : `${propDetail.id}-${asset.id}`); }} />
                           {showStatusMenu === `${propDetail.id}-${asset.id}` && (
@@ -1159,21 +1230,21 @@ export default function CoreoProductionHub() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ marginTop: 10, paddingLeft: isMobile ? 0 : 30 }}>
+                    <div className="alink-area">
                       {editLink ? (
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                          <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveLink(propDetail.id, asset.id)} placeholder="Paste link (Drive, Dropbox, Vimeo...)" autoFocus style={{ flex: 1, minWidth: 180, ...iStyle, fontSize: 11, padding: "5px 8px" }} />
-                          <button onClick={() => saveLink(propDetail.id, asset.id)} style={{ background: "#1a2a1a", border: "1px solid #4ade8033", color: "#4ade80", borderRadius: 4, padding: "5px 10px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>Save</button>
-                          <button onClick={() => { setEditingLink(null); setLinkInput(""); }} style={{ background: "none", border: "1px solid #222", color: "#555", borderRadius: 4, padding: "5px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveLink(propDetail.id, asset.id)} placeholder="Paste link (Drive, Dropbox, Vimeo...)" autoFocus className="dinput" style={{ flex: 1, minWidth: 180, fontSize: 12, padding: "7px 12px" }} />
+                          <button className="link-save" onClick={() => saveLink(propDetail.id, asset.id)}>Save</button>
+                          <button className="link-cancel" onClick={() => { setEditingLink(null); setLinkInput(""); }}>Cancel</button>
                         </div>
                       ) : link ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <a href={link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#6b8afd", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 200 : 400 }}>{link.length > 55 ? link.slice(0, 55) + "..." : link}</a>
-                          <button onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(link); }} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>edit</button>
-                          <button onClick={() => setAssetLinks(prev => { const n = { ...prev }; delete n[`${propDetail.id}-${asset.id}`]; return n; })} style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>remove</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="link-url" style={{ maxWidth: isMobile ? 200 : 400 }}>{link.length > 55 ? link.slice(0, 55) + "..." : link}</a>
+                          <button className="link-edit" onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(link); }}>edit</button>
+                          <button className="link-edit" onClick={() => setAssetLinks(prev => { const n = { ...prev }; delete n[`${propDetail.id}-${asset.id}`]; return n; })}>remove</button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(""); }} style={{ background: "none", border: "1px dashed #222", color: "#444", borderRadius: 4, padding: "4px 10px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>+ Add link</button>
+                        <button className="link-btn" onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(""); }}>+ Add link</button>
                       )}
                     </div>
                   </div>
@@ -1183,22 +1254,26 @@ export default function CoreoProductionHub() {
           </div>
 
           {/* NOTES */}
-          <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: 20 }}>
-            <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Notes & Feedback</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNote(selectedProperty)} placeholder="Add a note..." style={{ flex: 1, ...iStyle }} />
-              <button onClick={() => addNote(selectedProperty)} style={{ background: "#1a1a1a", border: "1px solid #333", color: "#888", borderRadius: 4, padding: "8px 14px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Add</button>
+          <div className="dpanel">
+            <div className="dpanel-h">
+              <div className="sec"><span className="ico">✎</span> Notes & Feedback</div>
             </div>
-            {propNotes.length === 0 ? <div style={{ fontSize: 12, color: "#333" }}>No notes yet</div> : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {[...propNotes].sort((a, b) => new Date(b.date) - new Date(a.date)).map((n, i) => (
-                  <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid #1a1a1a" }}>
-                    <div style={{ fontSize: 12, color: "#aaa" }}>{n.text}</div>
-                    <div style={{ fontSize: 10, color: "#444", marginTop: 3 }}>{new Date(n.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
-                  </div>
-                ))}
+            <div className="dpanel-body">
+              <div className="notes-input" style={{ marginBottom: 16 }}>
+                <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNote(selectedProperty)} placeholder="Add a note…" className="dinput" style={{ flex: 1 }} />
+                <button className="note-add" onClick={() => addNote(selectedProperty)}>Add</button>
               </div>
-            )}
+              {propNotes.length === 0 ? <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>No notes yet</div> : (
+                <div>
+                  {[...propNotes].sort((a, b) => new Date(b.date) - new Date(a.date)).map((n, i) => (
+                    <div key={i} className="note-item">
+                      <div className="note-text">{n.text}</div>
+                      <div className="note-date">{new Date(n.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
