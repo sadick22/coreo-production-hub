@@ -844,7 +844,7 @@ export default function CoreoProductionHub() {
 
   const loading = p1 || p2 || p3 || p4 || p5 || p6;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
-  const getLinks = (pid, aid) => assetLinks?.[`${pid}-${aid}`] || [];
+    const getLinks = (pid, aid) => { const v = assetLinks?.[`${pid}-${aid}`]; if (!v) return []; if (typeof v === "string") return v.trim() ? [v] : []; return v; };
   const setStatusDirect = (pid, aid, sid) => { setAssetStatuses(prev => ({ ...prev, [`${pid}-${aid}`]: sid })); setShowStatusMenu(null); };
   const saveLink = (pid, aid) => { if (!linkInput.trim()) return; setAssetLinks(prev => ({ ...prev, [`${pid}-${aid}`]: [...(prev?.[`${pid}-${aid}`] || []), linkInput.trim()] })); setEditingLink(null); setLinkInput(""); };
   const removeLink = (pid, aid, idx) => { setAssetLinks(prev => { const arr = [...(prev?.[`${pid}-${aid}`] || [])]; arr.splice(idx, 1); return { ...prev, [`${pid}-${aid}`]: arr }; }); };
@@ -1281,15 +1281,13 @@ export default function CoreoProductionHub() {
                     </div>
                   ) : (
                     <>
-                      <div className="cat-tabs" style={{ margin: "-12px -14px 10px", padding: 0 }}>
-                        {SPEC_CATEGORIES.map(cat => {
-                          const filled = cat.fields.filter(f => specs[f.id]).length;
-                          return (
-                            <button key={cat.id} className={`cat-tab${specTab === cat.id ? " on" : ""}`} onClick={() => setSpecTab(cat.id)} style={{ fontSize: 10, padding: "8px 10px" }}>
-                              {cat.label} {filled > 0 && <span className="cnt2">{filled}</span>}
-                            </button>
-                          );
-                        })}
+                      <div style={{ margin: "0 0 10px" }}>
+                        <select className="dinput" style={{ fontSize: 11, padding: "6px 8px", cursor: "pointer" }} value={specTab} onChange={e => setSpecTab(e.target.value)}>
+                          {SPEC_CATEGORIES.map(cat => {
+                            const filled = cat.fields.filter(f => specs[f.id]).length;
+                            return <option key={cat.id} value={cat.id}>{cat.label}{filled > 0 ? ` (${filled})` : ""}</option>;
+                          })}
+                        </select>
                       </div>
                       <div className="sgrid" style={editingSpecs ? { gridTemplateColumns: "1fr" } : {}}>
                         {SPEC_CATEGORIES.filter(c => c.id === specTab).map(cat =>
