@@ -9,7 +9,6 @@ const ASSET_TYPES = [
   { id: "listing", label: "Listing Sheet", icon: "📄", short: "LST" },
 ];
 
-
 const STATUSES = [
   { id: "not_started", label: "Not Started", color: "#5b6384", bg: "rgba(91,99,132,0.15)" },
   { id: "brief_ready", label: "Brief Ready", color: "#6b8afd", bg: "rgba(107,138,253,0.12)" },
@@ -812,7 +811,6 @@ export default function CoreoProductionHub() {
   const isMobile = useIsMobile();
   const [booted, setBooted] = useState(false);
   const [view, setView] = useState("dashboard");
-  const [reportTab, setReportTab] = useState("pipeline");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -846,9 +844,11 @@ export default function CoreoProductionHub() {
 
   const loading = p1 || p2 || p3 || p4 || p5 || p6;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
-  const getLink = (pid, aid) => assetLinks?.[`${pid}-${aid}`] || "";
+  const getLinks = (pid, aid) => assetLinks?.[`${pid}-${aid}`] || [];
   const setStatusDirect = (pid, aid, sid) => { setAssetStatuses(prev => ({ ...prev, [`${pid}-${aid}`]: sid })); setShowStatusMenu(null); };
-  const saveLink = (pid, aid) => { setAssetLinks(prev => ({ ...prev, [`${pid}-${aid}`]: linkInput.trim() })); setEditingLink(null); setLinkInput(""); };
+  const saveLink = (pid, aid) => { if (!linkInput.trim()) return; setAssetLinks(prev => ({ ...prev, [`${pid}-${aid}`]: [...(prev?.[`${pid}-${aid}`] || []), linkInput.trim()] })); setEditingLink(null); setLinkInput(""); };
+  const removeLink = (pid, aid, idx) => { setAssetLinks(prev => { const arr = [...(prev?.[`${pid}-${aid}`] || [])]; arr.splice(idx, 1); return { ...prev, [`${pid}-${aid}`]: arr }; }); };
+  const detectLinkLabel = (url) => { if (!url) return "Link"; const u = url.toLowerCase(); if (u.includes("drive.google")) return "Drive"; if (u.includes("dropbox")) return "Dropbox"; if (u.includes("vimeo")) return "Vimeo"; if (u.includes("youtube") || u.includes("youtu.be")) return "YouTube"; if (u.includes("canva")) return "Canva"; if (u.includes(".pdf")) return "PDF"; if (u.includes("figma")) return "Figma"; return "Link"; };
   const getProgress = (id) => ASSET_TYPES.reduce((n, a) => n + (getStatus(id, a.id) === "approved" ? 1 : 0), 0);
   const addNote = (pid) => { if (!noteInput.trim()) return; setNotes(prev => ({ ...prev, [`${pid}`]: [...(prev?.[`${pid}`] || []), { text: noteInput.trim(), date: new Date().toISOString() }] })); setNoteInput(""); };
   const isBlocked = (pid, aid) => (DEPS[aid] || []).some(d => getStatus(pid, d) !== "approved");
@@ -1104,6 +1104,44 @@ export default function CoreoProductionHub() {
 .brief-modal .bsec{margin-bottom:22px}
 .brief-modal .bsec-h{font-size:10px;letter-spacing:.12em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
 .brief-modal pre{font-family:'SF Mono','Menlo','Consolas',monospace;font-size:12px;color:var(--ink-2);white-space:pre-wrap;line-height:1.7;margin:0;background:rgba(7,11,30,.6);padding:16px;border-radius:10px;border:1px solid var(--line)}
+
+.dcols{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.dcmd{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:18px}
+.dcmd .dedge{width:3px;height:44px;border-radius:2px;flex-shrink:0}
+.dcmd .dinfo{flex:1;min-width:0}
+.dcmd .tline{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.dcmd .nm{font-family:'Space Grotesk';font-size:18px;font-weight:500;letter-spacing:-.01em}
+.dcmd .dloc{font-size:11px;color:var(--ink-dim);margin-top:2px}
+.dcmd .dright{display:flex;align-items:center;gap:14px}
+.dcmd .dscore{text-align:center}
+.dcmd .dscore .dbig{font-family:'Space Grotesk';font-size:30px;font-weight:300;letter-spacing:-.02em}
+.dcmd .dscore .dbig span{font-size:15px;color:var(--ink-dim)}
+.dcmd .dscore .dlab{font-size:8.5px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.08em}
+.dmini{display:flex;gap:3px}
+.dmini i{width:14px;height:5px;border-radius:3px}
+.rpanel{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden}
+.rpanel .rh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px}
+.rpanel .rh .rsec{font-size:10px;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:7px}
+.rpanel .rh .rsec .rico{color:var(--cyan);font-size:13px}
+.rpanel .rbody{padding:12px 14px;max-height:420px;overflow-y:auto}
+.rpanel .rbody::-webkit-scrollbar{width:4px}
+.rpanel .rbody::-webkit-scrollbar-thumb{background:rgba(120,150,255,.2);border-radius:2px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+.sf .sfl{font-size:9px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px}
+.sf .sfl .star{color:var(--cyan)}
+.sf .sfv{font-size:12px;color:var(--ink);line-height:1.4}
+.sf .sfv.empty{color:var(--ink-dim);opacity:.3}
+.lklist{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.lkrow{display:flex;align-items:center;gap:7px;padding:3px 0}
+.lktag{font-size:8.5px;font-weight:600;color:var(--cyan);background:rgba(63,179,203,0.1);padding:2px 6px;border-radius:4px;letter-spacing:.03em;flex-shrink:0}
+.lkurl{font-size:11px;color:var(--cyan-2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}
+.lkurl:hover{text-decoration:underline}
+.lkdel{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:11px;padding:2px;flex-shrink:0}
+.lkdel:hover{color:#ff8098}
+.lkadd{font-size:10px;color:var(--ink-dim);margin-top:6px}
+.lkadd span{border:1px dashed var(--line-2);border-radius:7px;padding:3px 10px;cursor:pointer;transition:.15s}
+.lkadd span:hover{border-color:var(--cyan);color:var(--cyan)}
+@media (max-width:800px){.dcols{grid-template-columns:1fr}}
 @media (max-width:1080px){.grid{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap}.side>.panel{flex:1;min-width:280px}}
 @media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.pills{display:none}}
 @media (prefers-reduced-motion:reduce){.card,.seg .bar,.pl-bar>i,.btn-primary,.pill{transition:none!important}}
@@ -1120,7 +1158,7 @@ export default function CoreoProductionHub() {
           </div>
         </div>
         <div className="pills">
-          {[{ id: "dashboard", label: "Dashboard" }, { id: "reports", label: "Reports" }, { id: "settings", label: "Settings" }].map(v => (
+          {[{ id: "dashboard", label: "Dashboard" }, { id: "settings", label: "Settings" }].map(v => (
             <button key={v.id} className={"pill" + ((view === v.id && !selectedProperty) ? " active" : "")} onClick={() => { setView(v.id); setSelectedProperty(null); }}>{v.label}</button>
           ))}
         </div>
@@ -1134,146 +1172,166 @@ export default function CoreoProductionHub() {
         <div className="detail">
           <button className="back" onClick={() => { setSelectedProperty(null); setEditingSpecs(false); }}>← Back to portfolio</button>
 
-          <div className="dhero">
-            <div>
-              <div className="typeline">
-                <span style={{ color: TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }}>#{propDetail.id}</span>
+          <div className="dcmd">
+            <div className="dedge" style={{ background: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", boxShadow: `0 0 10px ${TYPE_COLORS[propDetail.type] || "transparent"}` }} />
+            <div className="dinfo">
+              <div className="tline">
+                <span style={{ color: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", fontSize: 11 }}>#{propDetail.id}</span>
                 <span className="tbadge" style={{ "--tc": TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }}>{propDetail.type}</span>
               </div>
-              <h1>{propDetail.name}</h1>
-              <div className="subloc">⚲ {propDetail.location} · {propDetail.zone}</div>
+              <div className="nm">{propDetail.name}</div>
+              <div className="dloc">⚲ {propDetail.location} · {propDetail.zone}</div>
             </div>
-            <div className="score">
-              <div className="big" style={{ color: getProgress(propDetail.id) === 5 ? "var(--appr)" : "var(--cyan)" }}>{getProgress(propDetail.id)}<span style={{ fontSize: 20, color: "var(--ink-dim)" }}>/5</span></div>
-              <div className="lab">Assets Approved</div>
-              <div className="mini-strip">
+            <div className="dright">
+              <div className="dmini">
                 {ASSET_TYPES.map(a => {
                   const ok = getStatus(propDetail.id, a.id) === "approved";
                   return <i key={a.id} style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} title={`${a.short} — ${ok ? "Approved" : "Not done"}`} />;
                 })}
               </div>
+              <div className="dscore">
+                <div className="dbig" style={{ color: getProgress(propDetail.id) === 5 ? "var(--appr)" : "var(--cyan)" }}>{getProgress(propDetail.id)}<span>/5</span></div>
+                <div className="dlab">Approved</div>
+              </div>
             </div>
           </div>
 
-          {/* SPECS */}
-          <div className="dpanel">
-            <div className="dpanel-h">
-              <div className="sec"><span className="ico">◇</span> Property Specs <span className="cnt">{specMode === "essential" ? `${essFilled}/${ESSENTIAL_FIELDS.length} essential` : `${filledCount}/${ALL_SPEC_IDS.length}`}</span></div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div className="spec-toggle">
-                  {[{ id: "essential", label: "Essentials" }, { id: "all", label: "All fields" }].map(m => (
-                    <button key={m.id} className={specMode === m.id ? "on" : ""} onClick={() => setSpecMode(m.id)}>{m.label}</button>
-                  ))}
-                </div>
-                <button className={`edit-btn${editingSpecs ? " editing" : ""}`} onClick={() => setEditingSpecs(!editingSpecs)}>{editingSpecs ? "Done ✓" : "Edit"}</button>
+          <div className="dcols">
+            <div>
+              <div className="dpanel-h" style={{ border: "none", padding: "0 0 10px" }}>
+                <div className="sec"><span className="ico">▸</span> Assets & briefs</div>
               </div>
-            </div>
-
-            {specMode === "essential" ? (
-              <div className="dpanel-body">
-                <div className="spec-hint">These 12 fields feed the generated briefs. Fill them first — the rest is optional detail under "All fields".</div>
-                <div className="spec-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr" }}>
-                  {ESSENTIAL_FIELDS.map(renderField)}
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="cat-tabs">
-                  {SPEC_CATEGORIES.map(cat => {
-                    const filled = cat.fields.filter(f => specs[f.id]).length;
-                    return (
-                      <button key={cat.id} className={`cat-tab${specTab === cat.id ? " on" : ""}`} onClick={() => setSpecTab(cat.id)}>
-                        {cat.label} {filled > 0 && <span className="cnt2">{filled}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="dpanel-body">
-                  {SPEC_CATEGORIES.filter(c => c.id === specTab).map(cat => (
-                    <div key={cat.id} className="spec-grid" style={{ gridTemplateColumns: isMobile ? "1fr" : editingSpecs ? "1fr 1fr" : "1fr 1fr 1fr" }}>
-                      {cat.fields.map(renderField)}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* ASSETS */}
-          <div className="dpanel" style={{ overflow: "visible" }}>
-            <div className="dpanel-h">
-              <div className="sec"><span className="ico">▸</span> Assets & Briefs</div>
-            </div>
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-              {ASSET_TYPES.map(asset => {
-                const status = getStatus(propDetail.id, asset.id);
-                const deps = DEPS[asset.id] || [];
-                const blocked = isBlocked(propDetail.id, asset.id);
-                const link = getLink(propDetail.id, asset.id);
-                const editLink = editingLink === `${propDetail.id}-${asset.id}`;
-                return (
-                  <div key={asset.id} className="asset-row">
-                    <div className="aheader">
-                      <div className="aleft">
-                        <div className="aicon">{asset.icon}</div>
-                        <div>
-                          <div className="aname">{asset.label}</div>
-                          {blocked && status === "not_started" && <div className="awarn">⚠ Photos not approved yet — production usually starts after</div>}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {ASSET_TYPES.map(asset => {
+                  const status = getStatus(propDetail.id, asset.id);
+                  const blocked = isBlocked(propDetail.id, asset.id);
+                  const links = getLinks(propDetail.id, asset.id);
+                  const isAdding = editingLink === `add-${propDetail.id}-${asset.id}`;
+                  return (
+                    <div key={asset.id} className="asset-row">
+                      <div className="aheader">
+                        <div className="aleft">
+                          <div className="aicon">{asset.icon}</div>
+                          <div>
+                            <div className="aname">{asset.label}</div>
+                            {blocked && status === "not_started" && <div className="awarn">⚠ Photos not approved yet — production usually starts after</div>}
+                          </div>
+                        </div>
+                        <div className="aright">
+                          <button className="brief-btn" onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))}>Generate brief</button>
+                          <div style={{ position: "relative" }}>
+                            <StatusBadge status={status} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === `${propDetail.id}-${asset.id}` ? null : `${propDetail.id}-${asset.id}`); }} />
+                            {showStatusMenu === `${propDetail.id}-${asset.id}` && (
+                              <StatusMenu current={status} onSelect={sid => setStatusDirect(propDetail.id, asset.id, sid)} />
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="aright">
-                        <button className="brief-btn" onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))}>Generate Brief</button>
-                        <div style={{ position: "relative" }}>
-                          <StatusBadge status={status} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === `${propDetail.id}-${asset.id}` ? null : `${propDetail.id}-${asset.id}`); }} />
-                          {showStatusMenu === `${propDetail.id}-${asset.id}` && (
-                            <StatusMenu current={status} onSelect={sid => setStatusDirect(propDetail.id, asset.id, sid)} />
+                      <div className="lklist">
+                        {links.map((lk, li) => (
+                          <div key={li} className="lkrow">
+                            <span className="lktag">{detectLinkLabel(lk)}</span>
+                            <a href={lk} target="_blank" rel="noopener noreferrer" className="lkurl">{lk.replace(/^https?:\/\//, "").slice(0, 55)}{lk.length > 62 ? "..." : ""}</a>
+                            <button className="lkdel" title="Remove link" onClick={() => removeLink(propDetail.id, asset.id, li)}>×</button>
+                          </div>
+                        ))}
+                        {isAdding ? (
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+                            <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveLink(propDetail.id, asset.id)} placeholder="Paste link (Drive, Dropbox, Vimeo...)" autoFocus className="dinput" style={{ flex: 1, minWidth: 160, fontSize: 11, padding: "6px 10px" }} />
+                            <button className="link-save" onClick={() => saveLink(propDetail.id, asset.id)}>Save</button>
+                            <button className="link-cancel" onClick={() => { setEditingLink(null); setLinkInput(""); }}>Cancel</button>
+                          </div>
+                        ) : (
+                          <div className="lkadd"><span onClick={() => { setEditingLink(`add-${propDetail.id}-${asset.id}`); setLinkInput(""); }}>+ Add link</span></div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="rpanel">
+                <div className="rh">
+                  <div className="rsec"><span className="rico">◇</span> Specs <span style={{ fontWeight: 400, color: "var(--ink-dim)", fontSize: 9, marginLeft: 4 }}>{specMode === "essential" ? `${essFilled}/${ESSENTIAL_FIELDS.length}` : `${filledCount}/${ALL_SPEC_IDS.length}`}</span></div>
+                  <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                    <div className="spec-toggle">
+                      {[{ id: "essential", label: "Essentials" }, { id: "all", label: "All" }].map(m => (
+                        <button key={m.id} className={specMode === m.id ? "on" : ""} onClick={() => setSpecMode(m.id)}>{m.label}</button>
+                      ))}
+                    </div>
+                    <button className={`edit-btn${editingSpecs ? " editing" : ""}`} onClick={() => setEditingSpecs(!editingSpecs)}>{editingSpecs ? "Done ✓" : "Edit"}</button>
+                  </div>
+                </div>
+                <div className="rbody">
+                  {specMode === "essential" ? (
+                    <div className="sgrid" style={editingSpecs ? { gridTemplateColumns: "1fr" } : {}}>
+                      {ESSENTIAL_FIELDS.map(field => (
+                        <div key={field.id} className="sf">
+                          <div className="sfl">{field.label}{field.essential && <span className="star">*</span>}</div>
+                          {editingSpecs ? (
+                            field.multiline ? <textarea value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} rows={2} className="dinput" style={{ resize: "vertical", fontSize: 11, padding: "6px 8px" }} />
+                            : <input value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} className="dinput" style={{ fontSize: 11, padding: "6px 8px" }} />
+                          ) : (
+                            <div className={`sfv${specs[field.id] ? "" : " empty"}`}>{specs[field.id] || "—"}</div>
                           )}
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="cat-tabs" style={{ margin: "-12px -14px 10px", padding: 0 }}>
+                        {SPEC_CATEGORIES.map(cat => {
+                          const filled = cat.fields.filter(f => specs[f.id]).length;
+                          return (
+                            <button key={cat.id} className={`cat-tab${specTab === cat.id ? " on" : ""}`} onClick={() => setSpecTab(cat.id)} style={{ fontSize: 10, padding: "8px 10px" }}>
+                              {cat.label} {filled > 0 && <span className="cnt2">{filled}</span>}
+                            </button>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="alink-area">
-                      {editLink ? (
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                          <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveLink(propDetail.id, asset.id)} placeholder="Paste link (Drive, Dropbox, Vimeo...)" autoFocus className="dinput" style={{ flex: 1, minWidth: 180, fontSize: 12, padding: "7px 12px" }} />
-                          <button className="link-save" onClick={() => saveLink(propDetail.id, asset.id)}>Save</button>
-                          <button className="link-cancel" onClick={() => { setEditingLink(null); setLinkInput(""); }}>Cancel</button>
-                        </div>
-                      ) : link ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <a href={link} target="_blank" rel="noopener noreferrer" className="link-url" style={{ maxWidth: isMobile ? 200 : 400 }}>{link.length > 55 ? link.slice(0, 55) + "..." : link}</a>
-                          <button className="link-edit" onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(link); }}>edit</button>
-                          <button className="link-edit" onClick={() => setAssetLinks(prev => { const n = { ...prev }; delete n[`${propDetail.id}-${asset.id}`]; return n; })}>remove</button>
-                        </div>
-                      ) : (
-                        <button className="link-btn" onClick={() => { setEditingLink(`${propDetail.id}-${asset.id}`); setLinkInput(""); }}>+ Add link</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* NOTES */}
-          <div className="dpanel">
-            <div className="dpanel-h">
-              <div className="sec"><span className="ico">✎</span> Notes & Feedback</div>
-            </div>
-            <div className="dpanel-body">
-              <div className="notes-input" style={{ marginBottom: 16 }}>
-                <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNote(selectedProperty)} placeholder="Add a note…" className="dinput" style={{ flex: 1 }} />
-                <button className="note-add" onClick={() => addNote(selectedProperty)}>Add</button>
-              </div>
-              {propNotes.length === 0 ? <div style={{ fontSize: 12, color: "var(--ink-dim)" }}>No notes yet</div> : (
-                <div>
-                  {[...propNotes].sort((a, b) => new Date(b.date) - new Date(a.date)).map((n, i) => (
-                    <div key={i} className="note-item">
-                      <div className="note-text">{n.text}</div>
-                      <div className="note-date">{new Date(n.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
-                    </div>
-                  ))}
+                      <div className="sgrid" style={editingSpecs ? { gridTemplateColumns: "1fr" } : {}}>
+                        {SPEC_CATEGORIES.filter(c => c.id === specTab).map(cat =>
+                          cat.fields.map(field => (
+                            <div key={field.id} className="sf" style={field.multiline && editingSpecs ? { gridColumn: "1 / -1" } : {}}>
+                              <div className="sfl">{field.label}{field.essential && <span className="star">*</span>}</div>
+                              {editingSpecs ? (
+                                field.multiline ? <textarea value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} rows={2} className="dinput" style={{ resize: "vertical", fontSize: 11, padding: "6px 8px" }} />
+                                : <input value={specs[field.id] || ""} onChange={e => setSpec(field.id, e.target.value)} placeholder={field.placeholder} className="dinput" style={{ fontSize: 11, padding: "6px 8px" }} />
+                              ) : (
+                                <div className={`sfv${specs[field.id] ? "" : " empty"}`}>{specs[field.id] || "—"}</div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
+
+              <div className="rpanel">
+                <div className="rh">
+                  <div className="rsec"><span className="rico">✎</span> Notes</div>
+                </div>
+                <div className="rbody">
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                    <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNote(selectedProperty)} placeholder="Add a note…" className="dinput" style={{ flex: 1, fontSize: 11, padding: "6px 10px" }} />
+                    <button className="note-add" style={{ padding: "6px 10px", fontSize: 10 }} onClick={() => addNote(selectedProperty)}>Add</button>
+                  </div>
+                  {propNotes.length === 0 ? <div style={{ fontSize: 11, color: "var(--ink-dim)" }}>No notes yet</div> : (
+                    <div>
+                      {[...propNotes].sort((a, b) => new Date(b.date) - new Date(a.date)).map((n, i) => (
+                        <div key={i} className="note-item">
+                          <div className="note-text" style={{ fontSize: 11 }}>{n.text}</div>
+                          <div className="note-date">{new Date(n.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1428,72 +1486,7 @@ export default function CoreoProductionHub() {
             </div>
           )}
         </div>
-      /* ═══ REPORTS (Pipeline + Zones merged) ═══ */
-      ) : view === "reports" ? (
-        <div style={{ padding: isMobile ? 16 : 24, maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "flex", gap: 2, marginBottom: 20, background: "#111", borderRadius: 6, padding: 3, width: "fit-content" }}>
-            {[{ id: "pipeline", label: "By Asset Type" }, { id: "zones", label: "By Zone" }].map(t => (
-              <button key={t.id} onClick={() => setReportTab(t.id)} style={{
-                background: reportTab === t.id ? "#1e1e1e" : "transparent", color: reportTab === t.id ? "#ddd" : "#555",
-                border: "none", borderRadius: 4, padding: "6px 14px", fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-              }}>{t.label}</button>
-            ))}
-          </div>
-
-          {reportTab === "pipeline" ? (
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 12, flexDirection: isMobile ? "column" : "row" }}>
-              {ASSET_TYPES.map(asset => {
-                const byS = {}; STATUSES.forEach(s => { byS[s.id] = []; }); properties?.forEach(p => { byS[getStatus(p.id, asset.id)]?.push(p); });
-                return (
-                  <div key={asset.id} style={{ minWidth: isMobile ? "auto" : 200, flex: 1 }}>
-                    <div style={{ fontSize: 12, color: "#aaa", padding: "8px 12px", background: "#111", borderRadius: "6px 6px 0 0", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", gap: 8 }}><span>{asset.icon}</span> {asset.label}</div>
-                    <div style={{ background: "#0e0e0e", borderRadius: "0 0 6px 6px", padding: 8 }}>
-                      {STATUSES.map(st => (
-                        <div key={st.id}>{byS[st.id].length > 0 && (<>
-                          <div style={{ fontSize: 9, color: st.color, letterSpacing: "0.1em", textTransform: "uppercase", padding: "8px 4px 4px" }}>{st.label} ({byS[st.id].length})</div>
-                          {byS[st.id].map(p => (
-                            <div key={p.id} onClick={() => setSelectedProperty(p.id)} style={{ padding: "6px 8px", marginBottom: 3, borderRadius: 4, background: st.bg, cursor: "pointer", fontSize: 11, color: "#bbb" }}>
-                              <span style={{ color: "#555", marginRight: 6 }}>#{p.id}</span>{p.name}
-                            </div>
-                          ))}
-                        </>)}</div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <>
-              {zones.map(zone => {
-                const zp = properties?.filter(p => p.zone === zone) || [];
-                const zd = zp.reduce((a, p) => a + getProgress(p.id), 0);
-                return (
-                  <div key={zone} style={{ marginBottom: 24 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div style={{ fontSize: 14, color: "#ddd" }}>{zone} <span style={{ color: "#444", fontSize: 12 }}>({zp.length})</span></div>
-                      <div style={{ fontSize: 11, color: "#555" }}>{zd}/{zp.length * 5}</div>
-                    </div>
-                    <ProgressBar value={zd} max={zp.length * 5} color="#6b8afd" height={3} />
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 8, marginTop: 10 }}>
-                      {zp.map(p => (
-                        <div key={p.id} onClick={() => setSelectedProperty(p.id)} style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 6, padding: "10px 14px", cursor: "pointer" }}
-                          onMouseEnter={e => e.currentTarget.style.borderColor = "#333"} onMouseLeave={e => e.currentTarget.style.borderColor = "#1a1a1a"}>
-                          <div style={{ fontSize: 12, color: "#ccc" }}>{p.name}</div>
-                          <div style={{ fontSize: 10, color: "#555", marginTop: 2, marginBottom: 6 }}>{p.location}</div>
-                          <div style={{ display: "flex", gap: 4 }}>
-                            {ASSET_TYPES.map(a => { const c = STATUSES.find(x => x.id === getStatus(p.id, a.id)); return <div key={a.id} title={`${a.label}: ${c?.label}`} style={{ width: 8, height: 8, borderRadius: "50%", background: c?.color || "#333" }} />; })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      ) : view === "settings" ? (
+            ) : view === "settings" ? (
         <div className="wrap">
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <div className="setg-h">Settings</div>
