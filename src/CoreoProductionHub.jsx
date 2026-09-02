@@ -806,6 +806,7 @@ export default function CoreoProductionHub() {
   const [propertySpecs, setPropertySpecs, p3] = usePersistedState("coreo-property-specs-v2", {});
   const [notes, setNotes, p4] = usePersistedState("coreo-notes", {});
   const [assetLinks, setAssetLinks, p5] = usePersistedState("coreo-asset-links", {});
+  const [settings, setSettings, p6] = usePersistedState("coreo-settings", {});
 
   const isMobile = useIsMobile();
   const [booted, setBooted] = useState(false);
@@ -842,7 +843,7 @@ export default function CoreoProductionHub() {
     setAssetStatuses(prev => { const n = { ...prev }; ASSET_TYPES.forEach(a => delete n[`${id}-${a.id}`]); return n; });
   };
 
-  const loading = p1 || p2 || p3 || p4 || p5;
+  const loading = p1 || p2 || p3 || p4 || p5 || p6;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
   const getLink = (pid, aid) => assetLinks?.[`${pid}-${aid}`] || "";
   const setStatusDirect = (pid, aid, sid) => { setAssetStatuses(prev => ({ ...prev, [`${pid}-${aid}`]: sid })); setShowStatusMenu(null); };
@@ -930,7 +931,7 @@ export default function CoreoProductionHub() {
 .brand{display:flex;align-items:center;gap:12px}
 .brand .name{font-family:'Space Grotesk';font-weight:600;font-size:17px;color:var(--ink)}
 .brand .sub{font-size:11px;color:var(--ink-dim);margin-top:-2px}
-.pills{display:flex;gap:6px;margin-left:8px}
+.pills{display:flex;gap:6px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 .pill{font-size:12.5px;color:var(--ink-2);background:transparent;border:1px solid transparent;padding:8px 15px;border-radius:9px;cursor:pointer;font-family:inherit;transition:.18s}
 .pill:hover{color:var(--ink);background:rgba(120,150,255,0.07)}
 .pill.active{color:#04121a;background:linear-gradient(135deg,var(--cyan),#3d9bb5);box-shadow:0 0 15px rgba(34,211,238,.22);font-weight:600}
@@ -1012,6 +1013,20 @@ export default function CoreoProductionHub() {
 .b-add{background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;color:#04121a}
 .emptyx{padding:40px 20px;text-align:center;color:var(--ink-dim);grid-column:1/-1}
 .linkx{color:var(--cyan);cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit}
+.setg-h{font-family:'Space Grotesk';font-size:24px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.setg-sub{font-size:13px;color:var(--ink-dim);margin-bottom:22px}
+.setg-card{padding:20px 22px;margin-bottom:16px}
+.setg-sec{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:600;margin-bottom:16px}
+.setg-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid var(--line)}
+.setg-row.first{border-top:none;padding-top:0}
+.setg-label{font-size:14px;color:var(--ink)}
+.setg-hint{font-size:11.5px;color:var(--ink-dim);margin-top:3px;max-width:360px}
+.setg-logo{width:56px;height:56px;border-radius:12px;background:rgba(7,11,30,.6);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.setg-logo img{max-width:44px;max-height:44px;object-fit:contain}
+.setg-btn{font-family:inherit;font-size:12.5px;font-weight:600;color:#04121a;background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;border-radius:9px;padding:9px 14px;cursor:pointer;text-align:center;display:inline-block}
+.setg-btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
+.setg-btn.danger{background:transparent;border:1px solid rgba(255,80,110,.4);color:#ff8098}
+.setg-foot{font-size:11.5px;color:var(--ink-dim);text-align:center;margin-top:20px}
 @media (max-width:1080px){.grid{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap}.side>.panel{flex:1;min-width:280px}}
 @media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.pills{display:none}}
 @media (prefers-reduced-motion:reduce){.card,.seg .bar,.pl-bar>i,.btn-primary,.pill{transition:none!important}}
@@ -1020,7 +1035,7 @@ export default function CoreoProductionHub() {
       {/* Header */}
       <div className="nav">
         <div className="brand">
-          <img src="https://mycoreo.com/coreo-logo.png" alt="Coreo" style={{ height: 26, display: "block" }} />
+          <img src={settings?.logoUrl || "https://mycoreo.com/coreo-logo.png"} alt="Coreo" style={{ height: 26, display: "block" }} />
           <div style={{ width: 1, height: 18, background: "var(--line-2)" }} />
           <div>
             <div className="name">Production <span style={{ color: "var(--cyan)" }}>Hub</span></div>
@@ -1028,7 +1043,7 @@ export default function CoreoProductionHub() {
           </div>
         </div>
         <div className="pills">
-          {[{ id: "dashboard", label: "Dashboard" }, { id: "reports", label: "Reports" }].map(v => (
+          {[{ id: "dashboard", label: "Dashboard" }, { id: "reports", label: "Reports" }, { id: "settings", label: "Settings" }].map(v => (
             <button key={v.id} className={"pill" + ((view === v.id && !selectedProperty) ? " active" : "")} onClick={() => { setView(v.id); setSelectedProperty(null); }}>{v.label}</button>
           ))}
         </div>
@@ -1217,12 +1232,12 @@ export default function CoreoProductionHub() {
           <div className="grid">
             <div className="panel">
               <div className="panel-h">
-                <div className="t"><span className="ico">\u25c8</span> Exclusive Portfolio</div>
-                <div className="meta">{filteredProperties.length} shown \u00b7 {properties?.length || 0} total</div>
+                <div className="t"><span className="ico">◈</span> Exclusive Portfolio</div>
+                <div className="meta">{filteredProperties.length} shown · {properties?.length || 0} total</div>
               </div>
               <div className="filters">
-                <div className="search"><span style={{ color: "var(--ink-dim)" }}>\u2315</span>
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search property or location\u2026" />
+                <div className="search"><span style={{ color: "var(--ink-dim)" }}>⌕</span>
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search property or location…" />
                 </div>
                 <select className="selx" value={filterZone} onChange={e => setFilterZone(e.target.value)}><option value="all">All zones</option>{zones.map(z => <option key={z} value={z}>{z}</option>)}</select>
                 <select className="selx" value={filterType} onChange={e => setFilterType(e.target.value)}><option value="all">All types</option>{types.map(t => <option key={t} value={t}>{t}</option>)}</select>
@@ -1239,16 +1254,16 @@ export default function CoreoProductionHub() {
                   return (
                     <div key={prop.id} className="card" style={{ "--tc": tcol }} onClick={() => setSelectedProperty(prop.id)}>
                       <div className="edge" />
-                      <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>\u00d7</button>
+                      <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>
                       <div className="tbadge">{prop.type}</div>
                       <h3>{prop.name}</h3>
-                      <div className="loc">\u26b2 {prop.location} \u00b7 {prop.zone}</div>
+                      <div className="loc">⚲ {prop.location} · {prop.zone}</div>
                       <div className="strip">
                         {ASSET_TYPES.map(asset => {
                           const key = `dash-${prop.id}-${asset.id}`;
                           const ok = getStatus(prop.id, asset.id) === "approved";
                           return (
-                            <div key={asset.id} className="seg" title={`${asset.label} \u2014 ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
+                            <div key={asset.id} className="seg" title={`${asset.label} — ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
                               <div className="bar" style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} />
                               <div className="cap">{asset.short}</div>
                               {showStatusMenu === key && <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} alignRight={false} />}
@@ -1271,7 +1286,7 @@ export default function CoreoProductionHub() {
 
             <div className="side">
               <div className="panel">
-                <div className="panel-h"><div className="t"><span className="ico">\u25a4</span> Production Pipeline</div><div className="meta">approved by asset</div></div>
+                <div className="panel-h"><div className="t"><span className="ico">▤</span> Production Pipeline</div><div className="meta">approved by asset</div></div>
                 <div style={{ padding: "6px 0" }}>
                   {ASSET_TYPES.map(a => {
                     const tot = properties?.length || 1;
@@ -1289,7 +1304,7 @@ export default function CoreoProductionHub() {
               </div>
 
               <div className="panel">
-                <div className="panel-h"><div className="t"><span className="ico">\u25f1</span> Zones</div><div className="meta">{zones.length} active</div></div>
+                <div className="panel-h"><div className="t"><span className="ico">◱</span> Zones</div><div className="meta">{zones.length} active</div></div>
                 <div style={{ padding: "8px 0 10px" }}>
                   {(() => {
                     const map = {}; (properties || []).forEach(p => { map[p.zone] = (map[p.zone] || 0) + 1; });
@@ -1303,7 +1318,7 @@ export default function CoreoProductionHub() {
               </div>
 
               <div className="panel">
-                <div className="panel-h"><div className="t"><span className="ico">\u25b2</span> Needs Attention</div><div className="meta">stalled after photos</div></div>
+                <div className="panel-h"><div className="t"><span className="ico">▲</span> Needs Attention</div><div className="meta">stalled after photos</div></div>
                 <div className="att">
                   {(() => {
                     const items = (properties || []).filter(p => getStatus(p.id, "photos") === "approved" && ["teaser","overview","brochure","listing"].some(k => getStatus(p.id, k) !== "approved"))
@@ -1328,7 +1343,7 @@ export default function CoreoProductionHub() {
               <div className="modal">
                 <h2>Add exclusive property</h2>
                 <div className="msub">It joins the portfolio with all five assets set to Not Started.</div>
-                <div className="field"><label>Property name</label><input value={newProp.name} onChange={e => setNewProp({ ...newProp, name: e.target.value })} placeholder="e.g. Porto Arabia \u2013 Tower 18" autoFocus /></div>
+                <div className="field"><label>Property name</label><input value={newProp.name} onChange={e => setNewProp({ ...newProp, name: e.target.value })} placeholder="e.g. Porto Arabia – Tower 18" autoFocus /></div>
                 <div className="field"><label>Location</label><input value={newProp.location} onChange={e => setNewProp({ ...newProp, location: e.target.value })} placeholder="e.g. Porto Arabia, The Pearl" /></div>
                 <div className="field"><label>Type</label><select value={newProp.type} onChange={e => setNewProp({ ...newProp, type: e.target.value })}>{Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                 <div className="field"><label>Zone</label><select value={newProp.zone} onChange={e => setNewProp({ ...newProp, zone: e.target.value })}>{ZONE_OPTIONS.map(z => <option key={z} value={z}>{z}</option>)}</select></div>
@@ -1401,6 +1416,62 @@ export default function CoreoProductionHub() {
               })}
             </>
           )}
+        </div>
+      ) : view === "settings" ? (
+        <div className="wrap">
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <div className="setg-h">Settings</div>
+            <div className="setg-sub">Branding and data for the Production Hub.</div>
+
+            <div className="panel setg-card">
+              <div className="setg-sec">Branding</div>
+              <div className="setg-row first">
+                <div>
+                  <div className="setg-label">Logo</div>
+                  <div className="setg-hint">PNG or SVG, shown in the top-left. Saved with your data.</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div className="setg-logo"><img src={settings?.logoUrl || "https://mycoreo.com/coreo-logo.png"} alt="logo" /></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="setg-btn">Upload logo
+                      <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setSettings(prev => ({ ...(prev || {}), logoUrl: reader.result }));
+                        reader.readAsDataURL(file);
+                      }} />
+                    </label>
+                    {settings?.logoUrl && <button className="setg-btn ghost" onClick={() => setSettings(prev => { const n = { ...(prev || {}) }; delete n.logoUrl; return n; })}>Reset to default</button>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel setg-card">
+              <div className="setg-sec">Data</div>
+              <div className="setg-row first">
+                <div>
+                  <div className="setg-label">Backup</div>
+                  <div className="setg-hint">Download everything — properties, statuses, specs, notes, links — as a JSON file.</div>
+                </div>
+                <button className="setg-btn" onClick={() => {
+                  const data = { properties, assetStatuses, propertySpecs, notes, assetLinks, settings };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+                  a.download = `coreo-hub-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+                }}>Export JSON</button>
+              </div>
+              <div className="setg-row">
+                <div>
+                  <div className="setg-label">Reset statuses</div>
+                  <div className="setg-hint">Sets every asset on every property back to Not Started. Specs, notes and links are kept.</div>
+                </div>
+                <button className="setg-btn danger" onClick={() => { if (window.confirm("Reset every asset on every property back to Not Started?")) setAssetStatuses({}); }}>Reset all statuses</button>
+              </div>
+            </div>
+
+            <div className="setg-foot">Data is saved in this browser for now. Once Firebase is connected it will sync across devices and users.</div>
+          </div>
         </div>
       ) : null}
     </div>
