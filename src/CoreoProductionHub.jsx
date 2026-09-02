@@ -801,7 +801,7 @@ function BriefPanel({ brief, onClose }) {
 // ─── Main ───
 
 export default function CoreoProductionHub() {
-  const [properties,, p1] = usePersistedState("coreo-properties", INITIAL_PROPERTIES);
+  const [properties, setProperties, p1] = usePersistedState("coreo-properties", INITIAL_PROPERTIES);
   const [assetStatuses, setAssetStatuses, p2] = usePersistedState("coreo-asset-statuses", {});
   const [propertySpecs, setPropertySpecs, p3] = usePersistedState("coreo-property-specs-v2", {});
   const [notes, setNotes, p4] = usePersistedState("coreo-notes", {});
@@ -824,6 +824,23 @@ export default function CoreoProductionHub() {
   const [linkInput, setLinkInput] = useState("");
   const [activeBrief, setActiveBrief] = useState(null);
   const [specTab, setSpecTab] = useState("general");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const emptyProp = { name: "", location: "", type: Object.keys(TYPE_COLORS)[0], zone: "The Pearl" };
+  const [newProp, setNewProp] = useState(emptyProp);
+  const ZONE_OPTIONS = ["The Pearl", "Central", "West Bay", "South", "North", "Downtown"];
+  const addProperty = () => {
+    const name = newProp.name.trim();
+    if (!name) return;
+    const id = (properties?.reduce((m, p) => Math.max(m, p.id), 0) || 0) + 1;
+    setProperties(prev => [{ id, name, location: newProp.location.trim() || "—", type: newProp.type, zone: newProp.zone }, ...(prev || [])]);
+    setShowAddModal(false); setNewProp(emptyProp);
+  };
+  const removeProperty = (id) => {
+    const p = properties.find(x => x.id === id);
+    if (!window.confirm(`Remove "${p?.name}" from the exclusive portfolio? This clears its tracking.`)) return;
+    setProperties(prev => (prev || []).filter(x => x.id !== id));
+    setAssetStatuses(prev => { const n = { ...prev }; ASSET_TYPES.forEach(a => delete n[`${id}-${a.id}`]); return n; });
+  };
 
   const loading = p1 || p2 || p3 || p4 || p5;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
@@ -898,25 +915,125 @@ export default function CoreoProductionHub() {
   );
 
   return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", color: "#ccc", fontFamily: "'Söhne', 'Helvetica Neue', sans-serif" }} onClick={() => showStatusMenu && setShowStatusMenu(null)}>
+    <div style={{ minHeight: "100vh", color: "#ccc", fontFamily: "'Söhne', 'Helvetica Neue', sans-serif", background: "radial-gradient(1100px 600px at 82% -8%, rgba(63,179,203,0.06), transparent 60%), radial-gradient(900px 620px at 8% 10%, rgba(124,124,255,0.08), transparent 58%), linear-gradient(180deg,#0a0f26 0%, #070b1e 100%)", backgroundAttachment: "fixed" }} onClick={() => showStatusMenu && setShowStatusMenu(null)}>
       <BriefPanel brief={activeBrief} onClose={() => setActiveBrief(null)} />
 
+      <style>{`
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+:root{
+  --surface:rgba(20,30,68,0.55); --line:rgba(120,150,255,0.12); --line-2:rgba(120,150,255,0.22);
+  --cyan:#3fb3cb; --cyan-2:#74ccdd; --ink:#eaf0ff; --ink-2:#aeb8e4; --ink-dim:#7581b0;
+  --appr:#35f0a0; --warn:#ffb23e;
+}
+.nav,.nav *,.wrap,.wrap *,.overlay,.overlay *{box-sizing:border-box}
+.nav{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:18px;padding:14px 22px;background:rgba(9,13,32,0.72);backdrop-filter:blur(18px);border-bottom:1px solid var(--line);font-family:'Inter',sans-serif}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .name{font-family:'Space Grotesk';font-weight:600;font-size:17px;color:var(--ink)}
+.brand .sub{font-size:11px;color:var(--ink-dim);margin-top:-2px}
+.pills{display:flex;gap:6px;margin-left:8px}
+.pill{font-size:12.5px;color:var(--ink-2);background:transparent;border:1px solid transparent;padding:8px 15px;border-radius:9px;cursor:pointer;font-family:inherit;transition:.18s}
+.pill:hover{color:var(--ink);background:rgba(120,150,255,0.07)}
+.pill.active{color:#04121a;background:linear-gradient(135deg,var(--cyan),#3d9bb5);box-shadow:0 0 15px rgba(34,211,238,.22);font-weight:600}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.btn-primary{font-family:inherit;font-size:12.5px;font-weight:600;color:#04121a;cursor:pointer;background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;padding:10px 16px;border-radius:10px;display:flex;align-items:center;gap:7px;box-shadow:0 0 18px rgba(53,240,160,.22);transition:.18s}
+.btn-primary:hover{transform:translateY(-1px)}
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:20px 22px 60px;font-family:'Inter',sans-serif;color:var(--ink)}
+.num{font-family:'Space Grotesk';font-variant-numeric:tabular-nums;font-weight:300;letter-spacing:-0.02em}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi{position:relative;overflow:hidden;padding:20px 22px;border-radius:16px;background:var(--surface);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.kpi .lab{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+.kpi .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.kpi .big{font-size:44px;line-height:1;margin:14px 0 6px;color:var(--accent);text-shadow:0 0 22px var(--glow)}
+.kpi .foot{font-size:12px;color:var(--ink-2)} .kpi .foot b{color:var(--ink)}
+.track{height:5px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:12px}
+.track > i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--cyan-2))}
+.grid{display:grid;grid-template-columns:1fr 372px;gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(10px)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.panel-h .t{font-family:'Space Grotesk';font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px}
+.panel-h .t .ico{color:var(--cyan)}
+.panel-h .meta{font-size:11px;color:var(--ink-dim)}
+.filters{display:flex;gap:9px;padding:14px 18px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.search{flex:1;min-width:170px;display:flex;align-items:center;gap:8px;background:rgba(7,11,30,.6);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.search input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-family:inherit;font-size:13px}
+.search input::placeholder{color:var(--ink-dim)}
+.selx{background:rgba(7,11,30,.6);border:1px solid var(--line);color:var(--ink-2);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:12.5px;cursor:pointer;outline:none}
+.portfolio{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:13px;padding:16px 18px}
+.card{position:relative;background:linear-gradient(180deg,rgba(16,24,56,.6),rgba(11,17,42,.5));border:1px solid var(--line);border-radius:14px;padding:15px;cursor:pointer;transition:.16s;overflow:visible}
+.card:hover{border-color:var(--line-2);transform:translateY(-2px);box-shadow:0 12px 34px rgba(0,0,0,.4)}
+.card .edge{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tc);border-radius:14px 0 0 14px;box-shadow:0 0 12px var(--tc)}
+.tbadge{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tc);background:color-mix(in srgb,var(--tc) 16%,transparent);padding:3px 8px;border-radius:6px;display:inline-block}
+.card h3{font-family:'Space Grotesk';font-size:15px;font-weight:500;margin:11px 0 3px;line-height:1.25}
+.card .loc{font-size:11.5px;color:var(--ink-dim)}
+.strip{display:flex;gap:5px;margin-top:14px}
+.seg{flex:1;text-align:center;cursor:pointer;position:relative}
+.seg .bar{height:26px;border-radius:6px;transition:.18s}
+.seg:hover .bar{transform:scaleY(1.1)}
+.seg .cap{font-size:8.5px;color:var(--ink-dim);margin-top:5px;font-weight:600}
+.cardfoot{display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
+.remove{opacity:0;position:absolute;top:11px;right:11px;width:22px;height:22px;border-radius:6px;background:rgba(255,80,110,.14);border:1px solid rgba(255,80,110,.3);color:#ff8098;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.15s;z-index:5}
+.card:hover .remove{opacity:1}
+.add-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1.5px dashed var(--line-2);border-radius:14px;cursor:pointer;color:var(--cyan);background:rgba(63,179,203,.04);min-height:100%;padding:24px;transition:.16s}
+.add-card:hover{background:rgba(63,179,203,.09);border-color:var(--cyan)}
+.add-card .plus{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(63,179,203,.12);font-size:22px}
+.add-card span{font-size:12.5px;font-weight:600;font-family:'Space Grotesk'}
+.add-card small{font-size:10.5px;color:var(--ink-dim);text-align:center}
+.side{display:flex;flex-direction:column;gap:18px}
+.pl-row{display:flex;align-items:center;gap:11px;padding:11px 18px}
+.pl-row .plname{width:44px;flex-shrink:0;font-size:11.5px;color:var(--ink-2)}
+.pl-bar{flex:1;height:16px;border-radius:5px;overflow:hidden;display:flex;background:#5b6384}
+.pl-bar > i{height:100%;transition:width .5s ease}
+.pl-row .tot{width:26px;text-align:right;font-family:'Space Grotesk';font-size:12px;color:var(--ink-dim)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 14px;padding:13px 18px 16px;border-top:1px solid var(--line)}
+.legend span{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-dim)}
+.legend i{width:9px;height:9px;border-radius:3px}
+.zrow{padding:11px 18px}
+.zrow .zt{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.zrow .zt .zn{color:var(--ink-2)} .zrow .zt .zc{color:var(--ink-dim);font-family:'Space Grotesk'}
+.zbar{height:6px;border-radius:3px;background:#5b6384;overflow:hidden}
+.zbar>i{display:block;height:100%;background:linear-gradient(90deg,#7c7cff,var(--cyan))}
+.att{padding:10px 18px 16px}
+.att-item{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+.att-item:last-child{border-bottom:none}
+.att-item .flag{width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 10px var(--warn);flex-shrink:0}
+.att-item .n{font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-item .r{font-size:10.5px;color:var(--ink-dim)}
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(4,7,20,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{width:100%;max-width:460px;background:linear-gradient(180deg,#101a3c,#0b1230);border:1px solid var(--line-2);border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h2{font-size:19px;font-weight:600;margin-bottom:4px;font-family:'Space Grotesk';color:var(--ink)}
+.modal .msub{font-size:12.5px;color:var(--ink-dim);margin-bottom:20px}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);margin-bottom:6px;font-weight:600}
+.field input,.field select{width:100%;background:rgba(7,11,30,.7);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 13px;font-family:inherit;font-size:13.5px;outline:none}
+.field input:focus,.field select:focus{border-color:var(--cyan)}
+.modalact{display:flex;gap:10px;margin-top:22px}
+.modalact button{flex:1;font-family:inherit;font-size:13px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer}
+.b-cancel{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
+.b-add{background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;color:#04121a}
+.emptyx{padding:40px 20px;text-align:center;color:var(--ink-dim);grid-column:1/-1}
+.linkx{color:var(--cyan);cursor:pointer;background:none;border:none;font-family:inherit;font-size:inherit}
+@media (max-width:1080px){.grid{grid-template-columns:1fr}.side{flex-direction:row;flex-wrap:wrap}.side>.panel{flex:1;min-width:280px}}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.pills{display:none}}
+@media (prefers-reduced-motion:reduce){.card,.seg .bar,.pl-bar>i,.btn-primary,.pill{transition:none!important}}
+`}</style>
+
       {/* Header */}
-      <div style={{ borderBottom: "1px solid #1a1a1a", padding: isMobile ? "12px 16px" : "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="nav">
+        <div className="brand">
           <img src="https://mycoreo.com/coreo-logo.png" alt="Coreo" style={{ height: 26, display: "block" }} />
-          <div style={{ width: 1, height: 16, background: "#222" }} />
-          <div style={{ fontSize: 13, color: "#999" }}>Exclusive Properties Marketing Assets</div>
+          <div style={{ width: 1, height: 18, background: "var(--line-2)" }} />
+          <div>
+            <div className="name">Production <span style={{ color: "var(--cyan)" }}>Hub</span></div>
+            <div className="sub">Exclusive property marketing assets</div>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 2 }}>
+        <div className="pills">
           {[{ id: "dashboard", label: "Dashboard" }, { id: "reports", label: "Reports" }].map(v => (
-            <button key={v.id} onClick={() => { setView(v.id); setSelectedProperty(null); }} style={{
-              background: view === v.id && !selectedProperty ? "#1a1a1a" : "transparent",
-              color: view === v.id && !selectedProperty ? "#fff" : "#555",
-              border: "none", borderRadius: 4, padding: "6px 14px", fontSize: 11, cursor: "pointer",
-              fontFamily: "inherit", letterSpacing: "0.04em",
-            }}>{v.label}</button>
+            <button key={v.id} className={"pill" + ((view === v.id && !selectedProperty) ? " active" : "")} onClick={() => { setView(v.id); setSelectedProperty(null); }}>{v.label}</button>
           ))}
+        </div>
+        <div className="nav-right">
+          <button className="btn-primary" onClick={() => setShowAddModal(true)}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Exclusive Property</button>
         </div>
       </div>
 
@@ -1072,103 +1189,154 @@ export default function CoreoProductionHub() {
 
       /* ═══ DASHBOARD ═══ */
       ) : view === "dashboard" ? (
-        <div style={{ padding: isMobile ? 16 : 24, maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-            <StatCard label="Total" value={stats.total} sub={`${properties?.length || 0} properties`} />
-            <StatCard label="Approved" value={stats.done} color="#4ade80" sub={`${stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}%`} />
-            <StatCard label="In Progress" value={stats.inProg} color="#f0a030" />
-            <StatCard label="Not Started" value={stats.notStarted} color="#555" />
-          </div>
-          <ProgressBar value={stats.done} max={stats.total} color="#4ade80" height={3} />
-
-          {/* Search + Filters */}
-          <div style={{ display: "flex", gap: 10, marginTop: 20, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="🔍 Search property or location..."
-              style={{ ...iStyle, width: isMobile ? "100%" : 260, background: "#111", border: "1px solid #222" }}
-            />
-            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} style={selStyle}><option value="all">All Zones</option>{zones.map(z => <option key={z} value={z}>{z}</option>)}</select>
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} style={selStyle}><option value="all">All Types</option>{types.map(t => <option key={t} value={t}>{t}</option>)}</select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={selStyle}><option value="all">All Statuses</option><option value="not_started">Not Started</option><option value="in_progress">In Progress</option><option value="complete">Complete</option></select>
-            {hasActiveFilters && (
-              <button onClick={() => { setSearch(""); setFilterZone("all"); setFilterType("all"); setFilterStatus("all"); }} style={{ background: "none", border: "none", color: "#6b8afd", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Clear ({filteredProperties.length})</button>
-            )}
-          </div>
-
-          {filteredProperties.length === 0 && (
-            <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>No property matches. <button onClick={() => { setSearch(""); setFilterZone("all"); setFilterType("all"); setFilterStatus("all"); }} style={{ background: "none", border: "none", color: "#6b8afd", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>Clear filters</button></div>
-          )}
-
-          {isMobile ? (
-            /* ── Mobile: stacked cards ── */
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filteredProperties.map(prop => {
-                const prog = getProgress(prop.id);
-                return (
-                  <div key={prop.id} onClick={() => setSelectedProperty(prop.id)} style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: "12px 14px", cursor: "pointer" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <div style={{ fontSize: 13, color: "#ddd" }}>{prop.name}</div>
-                        <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{prop.location}</div>
-                      </div>
-                      <div style={{ fontSize: 11, color: prog === 5 ? "#4ade80" : "#666" }}>{prog}/5</div>
-                    </div>
-                    <div style={{ marginTop: 8 }}><ProgressBar value={prog} max={5} color={prog === 5 ? "#4ade80" : "#6b8afd"} height={3} /></div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
-                      {ASSET_TYPES.map(a => { const c = STATUSES.find(x => x.id === getStatus(prop.id, a.id)); return (
-                        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                          <div style={{ width: 7, height: 7, borderRadius: "50%", background: c?.color || "#333" }} />
-                          <span style={{ fontSize: 8, color: "#444" }}>{a.short}</span>
-                        </div>
-                      ); })}
-                    </div>
+        <div className="wrap">
+          {(() => {
+            const total = stats.total, done = stats.done;
+            const pct = total ? Math.round(done / total * 100) : 0;
+            const attention = (properties || []).filter(p => getStatus(p.id, "photos") === "approved" && ["teaser","overview","brochure","listing"].some(k => getStatus(p.id, k) !== "approved")).length;
+            const kpi = [
+              { lab: "Exclusive Properties", big: properties?.length || 0, accent: "var(--cyan)", glow: "rgba(63,179,203,.28)", foot: `across <b>${zones.length}</b> zones` },
+              { lab: "Total Assets", big: total, accent: "#8fa4ff", glow: "rgba(124,124,255,.28)", foot: "5 per property" },
+              { lab: "Approved", big: done, accent: "var(--appr)", glow: "rgba(53,240,160,.28)", foot: `<b>${pct}%</b> of portfolio complete`, bar: pct },
+              { lab: "Needs Attention", big: attention, accent: "var(--warn)", glow: "rgba(255,178,62,.25)", foot: "photos done, follow-ups pending" },
+            ];
+            return (
+              <div className="kpis">
+                {kpi.map((k, i) => (
+                  <div key={i} className="kpi" style={{ "--accent": k.accent, "--glow": k.glow }}>
+                    <div className="lab"><span className="dot" />{k.lab}</div>
+                    <div className="big num">{k.big}</div>
+                    <div className="foot" dangerouslySetInnerHTML={{ __html: k.foot }} />
+                    {k.bar !== undefined && <div className="track"><i style={{ width: k.bar + "%" }} /></div>}
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* ── Desktop: grid table ── */
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 120px repeat(5, 92px)", padding: "8px 12px", borderBottom: "1px solid #1a1a1a" }}>
-                <div style={{ fontSize: 10, color: "#444" }}>#</div>
-                <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.08em", textTransform: "uppercase" }}>Property</div>
-                <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.08em", textTransform: "uppercase" }}>Progress</div>
-                {ASSET_TYPES.map(a => <div key={a.id} style={{ fontSize: 10, color: "#444", textAlign: "center", textTransform: "uppercase" }}>{a.short}</div>)}
+                ))}
               </div>
-              {filteredProperties.map(prop => {
-                const prog = getProgress(prop.id);
-                return (
-                  <div key={prop.id} onClick={() => setSelectedProperty(prop.id)} style={{ display: "grid", gridTemplateColumns: "36px 1fr 120px repeat(5, 92px)", padding: "10px 12px", borderBottom: "1px solid #111", alignItems: "center", cursor: "pointer", transition: "background 0.1s" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#111"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <div style={{ fontSize: 11, color: "#444" }}>{prop.id}</div>
-                    <div>
-                      <div style={{ fontSize: 13, color: "#ddd" }}>{prop.name}</div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
-                        <span style={{ fontSize: 10, color: "#555" }}>{prop.location}</span>
-                        <span style={{ fontSize: 9, color: TYPE_COLORS[prop.type] || "#555", background: (TYPE_COLORS[prop.type] || "#555") + "15", padding: "1px 5px", borderRadius: 3 }}>{prop.type}</span>
+            );
+          })()}
+
+          <div className="grid">
+            <div className="panel">
+              <div className="panel-h">
+                <div className="t"><span className="ico">\u25c8</span> Exclusive Portfolio</div>
+                <div className="meta">{filteredProperties.length} shown \u00b7 {properties?.length || 0} total</div>
+              </div>
+              <div className="filters">
+                <div className="search"><span style={{ color: "var(--ink-dim)" }}>\u2315</span>
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search property or location\u2026" />
+                </div>
+                <select className="selx" value={filterZone} onChange={e => setFilterZone(e.target.value)}><option value="all">All zones</option>{zones.map(z => <option key={z} value={z}>{z}</option>)}</select>
+                <select className="selx" value={filterType} onChange={e => setFilterType(e.target.value)}><option value="all">All types</option>{types.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                <select className="selx" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All statuses</option><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select>
+                {hasActiveFilters && <button className="linkx" onClick={() => { setSearch(""); setFilterZone("all"); setFilterType("all"); setFilterStatus("all"); }}>Clear</button>}
+              </div>
+              <div className="portfolio">
+                {filteredProperties.length === 0 && (
+                  <div className="emptyx"><b style={{ color: "var(--ink-2)", fontFamily: "'Space Grotesk'", display: "block", marginBottom: 5 }}>No property matches</b>Try a different search or zone. <button className="linkx" onClick={() => { setSearch(""); setFilterZone("all"); setFilterType("all"); setFilterStatus("all"); }}>Clear filters</button></div>
+                )}
+                {filteredProperties.map(prop => {
+                  const doneCount = getProgress(prop.id);
+                  const tcol = TYPE_COLORS[prop.type] || "#7581b0";
+                  return (
+                    <div key={prop.id} className="card" style={{ "--tc": tcol }} onClick={() => setSelectedProperty(prop.id)}>
+                      <div className="edge" />
+                      <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>\u00d7</button>
+                      <div className="tbadge">{prop.type}</div>
+                      <h3>{prop.name}</h3>
+                      <div className="loc">\u26b2 {prop.location} \u00b7 {prop.zone}</div>
+                      <div className="strip">
+                        {ASSET_TYPES.map(asset => {
+                          const key = `dash-${prop.id}-${asset.id}`;
+                          const ok = getStatus(prop.id, asset.id) === "approved";
+                          return (
+                            <div key={asset.id} className="seg" title={`${asset.label} \u2014 ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
+                              <div className="bar" style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} />
+                              <div className="cap">{asset.short}</div>
+                              {showStatusMenu === key && <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} alignRight={false} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="cardfoot">
+                        <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>
+                        <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>#{prop.id}</div>
                       </div>
                     </div>
-                    <div style={{ paddingRight: 12 }}><ProgressBar value={prog} max={5} color={prog === 5 ? "#4ade80" : "#6b8afd"} height={3} /><div style={{ fontSize: 10, color: "#444", marginTop: 3 }}>{prog}/5</div></div>
-                    {ASSET_TYPES.map(asset => {
-                      const key = `dash-${prop.id}-${asset.id}`;
-                      return (
-                        <div key={asset.id} style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 4, position: "relative" }} onClick={e => e.stopPropagation()}>
-                          <StatusBadge status={getStatus(prop.id, asset.id)} small onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }} />
-                          {getLink(prop.id, asset.id) && <span style={{ fontSize: 9, color: "#6b8afd" }}>🔗</span>}
-                          {showStatusMenu === key && (
-                            <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </>
+                  );
+                })}
+                <div className="add-card" onClick={() => setShowAddModal(true)}>
+                  <div className="plus">+</div><span>Add Exclusive Property</span><small>New listing to track through production</small>
+                </div>
+              </div>
+            </div>
+
+            <div className="side">
+              <div className="panel">
+                <div className="panel-h"><div className="t"><span className="ico">\u25a4</span> Production Pipeline</div><div className="meta">approved by asset</div></div>
+                <div style={{ padding: "6px 0" }}>
+                  {ASSET_TYPES.map(a => {
+                    const tot = properties?.length || 1;
+                    const cnt = (properties || []).filter(p => getStatus(p.id, a.id) === "approved").length;
+                    return (
+                      <div key={a.id} className="pl-row">
+                        <div className="plname">{a.short}</div>
+                        <div className="pl-bar"><i style={{ width: (cnt / tot * 100) + "%", background: "#0e1d60", borderRight: "1px solid rgba(130,150,220,0.5)" }} /></div>
+                        <div className="tot">{cnt}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="legend"><span><i style={{ background: "#5b6384" }} />Not done</span><span><i style={{ background: "#0e1d60", border: "1px solid rgba(130,150,220,0.6)" }} />Approved</span></div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-h"><div className="t"><span className="ico">\u25f1</span> Zones</div><div className="meta">{zones.length} active</div></div>
+                <div style={{ padding: "8px 0 10px" }}>
+                  {(() => {
+                    const map = {}; (properties || []).forEach(p => { map[p.zone] = (map[p.zone] || 0) + 1; });
+                    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+                    const max = Math.max(...entries.map(e => e[1]), 1);
+                    return entries.map(([z, c]) => (
+                      <div key={z} className="zrow"><div className="zt"><span className="zn">{z}</span><span className="zc">{c}</span></div><div className="zbar"><i style={{ width: (c / max * 100) + "%" }} /></div></div>
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              <div className="panel">
+                <div className="panel-h"><div className="t"><span className="ico">\u25b2</span> Needs Attention</div><div className="meta">stalled after photos</div></div>
+                <div className="att">
+                  {(() => {
+                    const items = (properties || []).filter(p => getStatus(p.id, "photos") === "approved" && ["teaser","overview","brochure","listing"].some(k => getStatus(p.id, k) !== "approved"))
+                      .map(p => ({ p, idle: ["teaser","overview","brochure","listing"].filter(k => getStatus(p.id, k) !== "approved").length }))
+                      .sort((a, b) => b.idle - a.idle).slice(0, 6);
+                    if (!items.length) return <div style={{ color: "var(--ink-dim)", fontSize: 12, padding: "8px 0" }}>Nothing stalled. Every property with approved photos has its follow-ups done too.</div>;
+                    return items.map(({ p, idle }) => (
+                      <div key={p.id} className="att-item" onClick={() => setSelectedProperty(p.id)} style={{ cursor: "pointer" }}>
+                        <div className="flag" />
+                        <div style={{ flex: 1, minWidth: 0 }}><div className="n">{p.name}</div><div className="r">{p.location}</div></div>
+                        <div style={{ fontSize: 11, color: "var(--warn)", fontFamily: "'Space Grotesk'" }}>{idle} left</div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {showAddModal && (
+            <div className="overlay" onClick={e => { if (e.currentTarget === e.target) setShowAddModal(false); }}>
+              <div className="modal">
+                <h2>Add exclusive property</h2>
+                <div className="msub">It joins the portfolio with all five assets set to Not Started.</div>
+                <div className="field"><label>Property name</label><input value={newProp.name} onChange={e => setNewProp({ ...newProp, name: e.target.value })} placeholder="e.g. Porto Arabia \u2013 Tower 18" autoFocus /></div>
+                <div className="field"><label>Location</label><input value={newProp.location} onChange={e => setNewProp({ ...newProp, location: e.target.value })} placeholder="e.g. Porto Arabia, The Pearl" /></div>
+                <div className="field"><label>Type</label><select value={newProp.type} onChange={e => setNewProp({ ...newProp, type: e.target.value })}>{Object.keys(TYPE_COLORS).map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                <div className="field"><label>Zone</label><select value={newProp.zone} onChange={e => setNewProp({ ...newProp, zone: e.target.value })}>{ZONE_OPTIONS.map(z => <option key={z} value={z}>{z}</option>)}</select></div>
+                <div className="modalact"><button className="b-cancel" onClick={() => setShowAddModal(false)}>Cancel</button><button className="b-add" onClick={addProperty}>Add property</button></div>
+              </div>
+            </div>
           )}
         </div>
-
       /* ═══ REPORTS (Pipeline + Zones merged) ═══ */
       ) : view === "reports" ? (
         <div style={{ padding: isMobile ? 16 : 24, maxWidth: 1100, margin: "0 auto" }}>
