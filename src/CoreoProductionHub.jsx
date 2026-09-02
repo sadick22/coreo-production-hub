@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { storage } from "./lib/storage.js";
 
 const ASSET_TYPES = [
   { id: "photos", label: "Photos", icon: "📷", short: "PHO" },
