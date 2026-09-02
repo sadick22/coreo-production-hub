@@ -9,6 +9,7 @@ const ASSET_TYPES = [
   { id: "listing", label: "Listing Sheet", icon: "📄", short: "LST" },
 ];
 
+
 const STATUSES = [
   { id: "not_started", label: "Not Started", color: "#5b6384", bg: "rgba(91,99,132,0.15)" },
   { id: "brief_ready", label: "Brief Ready", color: "#6b8afd", bg: "rgba(107,138,253,0.12)" },
