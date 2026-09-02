@@ -398,7 +398,7 @@ function usePersistedState(key, defaultVal) {
   useEffect(() => {
     (async () => {
       try {
-        const r = await window.storage.get(key);
+        const r = await storage.get(key);
         if (r && r.value) setData(JSON.parse(r.value)); else setData(defaultVal);
       } catch { setData(defaultVal); }
       setLoading(false);
@@ -407,7 +407,7 @@ function usePersistedState(key, defaultVal) {
   const update = useCallback(async (v) => {
     const val = typeof v === "function" ? v(data) : v;
     setData(val);
-    try { await window.storage.set(key, JSON.stringify(val)); } catch (e) { console.error(e); }
+    try { await storage.set(key, JSON.stringify(val)); } catch (e) { console.error(e); }
   }, [data, key]);
   return [data, update, loading];
 }
