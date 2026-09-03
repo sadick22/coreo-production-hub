@@ -395,18 +395,20 @@ function generateBrief(assetId, prop, specs) {
 function usePersistedState(key, defaultVal) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const skipNext = useRef(false);
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await storage.get(key);
-        if (r && r.value) setData(JSON.parse(r.value)); else setData(defaultVal);
-      } catch { setData(defaultVal); }
+    const unsub = storage.subscribe(key, (val) => {
+      if (skipNext.current) { skipNext.current = false; return; }
+      if (val !== null) { try { setData(JSON.parse(val)); } catch { setData(defaultVal); } }
+      else { setData(defaultVal); }
       setLoading(false);
-    })();
+    });
+    return unsub;
   }, []);
   const update = useCallback(async (v) => {
     const val = typeof v === "function" ? v(data) : v;
     setData(val);
+    skipNext.current = true;
     try { await storage.set(key, JSON.stringify(val)); } catch (e) { console.error(e); }
   }, [data, key]);
   return [data, update, loading];
