@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { storage } from "./lib/storage.js";
+import { storage, loginWithUsername, logout, onAuthChange } from "./lib/storage.js";
 
 const ASSET_TYPES = [
   { id: "photos", label: "Photos", icon: "📷", short: "PHO" },
@@ -422,301 +422,46 @@ function useIsMobile() {
   return m;
 }
 
-const BOOT_LINES = [
-  "> COREO SYSTEMS v2.0",
-  "> Initializing EPMAS module ...",
-  "> Loading property database ......... OK",
-  "> Syncing asset statuses ............ OK",
-  "> Mounting brief generator .......... OK",
-  "> Authentication required.",
-];
+function LoginScreen({ onLogin }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-const ACCESS_CODE = "EPMASACCESS2026";
-
-function BootScreen({ onDone }) {
-  const canvasRef = useRef(null);
-  const inputRef = useRef(null);
-  const [typed, setTyped] = useState("");
-  const [phase, setPhase] = useState("typing");
-  const [pwd, setPwd] = useState("");
-  const [denied, setDenied] = useState(0);
-  const [fading, setFading] = useState(false);
-  const [scramble, setScramble] = useState("");
-  const [lockedIn, setLockedIn] = useState(false);
-  const [flash, setFlash] = useState(false);
-  const [particles, setParticles] = useState([]);
-  const [variant, setVariant] = useState(0);
-  const [reels, setReels] = useState(["◇", "◇", "◇"]);
-  const [count, setCount] = useState(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const chars = "01COREOアイウエオカキクケコ$#@%&";
-    const fontSize = 14;
-    const cols = Math.floor(canvas.width / fontSize);
-    const drops = Array(cols).fill(0).map(() => Math.floor(Math.random() * -40));
-    const iv = setInterval(() => {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = fontSize + "px monospace";
-      drops.forEach((y, i) => {
-        ctx.fillStyle = Math.random() > 0.95 ? "#4ade80" : "#0f3d1e";
-        ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * fontSize, y * fontSize);
-        if (y * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
-      });
-    }, 50);
-    return () => clearInterval(iv);
-  }, []);
-
-  useEffect(() => {
-    const full = BOOT_LINES.join("\n");
-    let i = 0;
-    const iv = setInterval(() => {
-      i += 2;
-      setTyped(full.slice(0, i));
-      if (i >= full.length) {
-        clearInterval(iv);
-        setTimeout(() => setPhase("password"), 300);
-      }
-    }, 14);
-    return () => clearInterval(iv);
-  }, []);
-
-  useEffect(() => { if (phase === "password") setTimeout(() => inputRef.current?.focus(), 50); }, [phase]);
-
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-  const mkParticles = (n, fn) => setParticles(Array.from({ length: n }, (_, i) => fn(i)));
-
-  const runScramble = (delay = 0) => {
-    setTimeout(() => {
-      const target = "WELCOME TO THE EPMAS DASHBOARD";
-      const glyphs = "!<>-_\\/[]{}=+*^?#$%&01";
-      let frame = 0;
-      const iv = setInterval(() => {
-        frame++;
-        const lc = Math.floor(frame / 2);
-        let out = "";
-        for (let i = 0; i < target.length; i++) {
-          out += i < lc ? target[i] : (target[i] === " " ? " " : glyphs[Math.floor(Math.random() * glyphs.length)]);
-        }
-        setScramble(out);
-        if (lc >= target.length) { clearInterval(iv); setLockedIn(true); }
-      }, 30);
-    }, delay);
-  };
-
-  const submit = () => {
-    if (pwd.trim() !== ACCESS_CODE) { setDenied(d => d + 1); setPwd(""); inputRef.current?.focus(); return; }
-    const v = Math.floor(Math.random() * 10);
-    setVariant(v);
-    setPhase("granted");
-    setFlash(true);
-    setTimeout(() => setFlash(false), 500);
-    let totalMs = 4400;
-
-    if (v === 0) {
-      // 0 — MATRIX BREACH: burst vert + décodage
-      runScramble();
-      mkParticles(60, i => ({ id: i, left: "50%", top: "52%", w: rnd(4, 10), h: rnd(4, 10), color: pick(["#4ade80", "#a7f3d0", "#22c55e"]), dx: rnd(-350, 350), dy: rnd(-380, 200), rot: rnd(-360, 360), delay: rnd(0, 0.2), dur: 1.4, anim: "burst" }));
-    } else if (v === 1) {
-      // 1 — ARCADE LEVEL UP: pixels rétro 8-bit
-      runScramble(200);
-      mkParticles(45, i => ({ id: i, left: "50%", top: "52%", w: 8, h: 8, color: pick(["#facc15", "#f87171", "#60a5fa", "#4ade80", "#f0abfc"]), dx: rnd(-320, 320), dy: rnd(-340, 160), rot: 0, delay: rnd(0, 0.3), dur: 1.2, anim: "burst" }));
-    } else if (v === 2) {
-      // 2 — SLOT MACHINE: rouleaux 7-7-7 + pluie de pièces
-      let t = 0;
-      const spin = setInterval(() => { t++; setReels(r => r.map((x, idx) => t > 12 + idx * 8 ? "7" : pick(["◆", "7", "★", "●", "♠"]))); if (t > 30) clearInterval(spin); }, 70);
-      setTimeout(() => {
-        mkParticles(50, i => ({ id: i, left: rnd(5, 95) + "%", top: "-4%", w: rnd(6, 10), h: rnd(6, 10), color: pick(["#facc15", "#fde68a", "#f59e0b"]), dx: rnd(-30, 30), dy: rnd(400, 850), rot: rnd(-720, 720), delay: rnd(0, 0.5), dur: rnd(1.2, 2), anim: "burst" }));
-        runScramble();
-      }, 2300);
-      totalMs = 6600;
-    } else if (v === 3) {
-      // 3 — HYPERSPACE: traînées d'étoiles + zoom
-      mkParticles(70, i => ({ id: i, left: "50%", top: "50%", w: 2, h: rnd(14, 40), color: pick(["#ffffff", "#93c5fd", "#dbeafe"]), dx: 0, dy: rnd(250, 750), rot: rnd(0, 360), delay: rnd(0, 0.5), dur: rnd(0.7, 1.2), anim: "streak" }));
-      runScramble(500);
-    } else if (v === 4) {
-      // 4 — GLITCH: texte corrompu RGB
-      runScramble();
-    } else if (v === 5) {
-      // 5 — SYNTHWAVE: néon rose/cyan qui grésille
-      runScramble(300);
-    } else if (v === 6) {
-      // 6 — DOSSIER CLASSIFIÉ: tampon rouge
-      runScramble();
-    } else if (v === 7) {
-      // 7 — LANCEMENT FUSÉE: compte à rebours + décollage
-      setCount(3);
-      setTimeout(() => setCount(2), 700);
-      setTimeout(() => setCount(1), 1400);
-      setTimeout(() => {
-        setCount(null);
-        mkParticles(35, i => ({ id: i, left: "50%", top: "58%", w: rnd(3, 7), h: rnd(3, 7), color: pick(["#f97316", "#facc15", "#fca5a5"]), dx: rnd(-70, 70), dy: rnd(80, 280), rot: 0, delay: rnd(0, 0.4), dur: 1.2, anim: "burst" }));
-        runScramble(500);
-      }, 2100);
-      totalMs = 6800;
-    } else if (v === 8) {
-      // 8 — LOOT LÉGENDAIRE: coffre qui tremble puis explose
-      setTimeout(() => {
-        mkParticles(55, i => ({ id: i, left: "50%", top: "48%", w: rnd(5, 9), h: rnd(5, 9), color: pick(["#facc15", "#fde68a", "#a78bfa", "#f0abfc"]), dx: rnd(-330, 330), dy: rnd(-350, 250), rot: rnd(-540, 540), delay: 0, dur: 1.4, anim: "burst" }));
-        runScramble();
-      }, 1700);
-      totalMs = 6200;
-    } else {
-      // 9 — FEU D'ARTIFICE: bouquets multiples
-      for (let b = 0; b < 5; b++) {
-        setTimeout(() => {
-          const lx = rnd(15, 85), ly = rnd(12, 55);
-          setParticles(prev => [...prev, ...Array.from({ length: 24 }, (_, i) => {
-            const ang = (i / 24) * Math.PI * 2; const d = rnd(60, 160);
-            return { id: `${b}-${i}`, left: lx + "%", top: ly + "%", w: 4, h: 4, color: pick(["#f87171", "#facc15", "#60a5fa", "#4ade80", "#f0abfc"]), dx: Math.cos(ang) * d, dy: Math.sin(ang) * d + 40, rot: 0, delay: 0, dur: 1.3, anim: "burst" };
-          })]);
-        }, b * 450);
-      }
-      runScramble(600);
-      totalMs = 5400;
+  const submit = async (e) => {
+    if (e) e.preventDefault();
+    if (!username.trim() || !password) return;
+    setLoading(true); setError("");
+    try {
+      await loginWithUsername(username, password);
+      onLogin();
+    } catch (err) {
+      setError(err.code === "auth/invalid-credential" ? "Invalid username or password" : err.code === "auth/too-many-requests" ? "Too many attempts — try again later" : "Login failed");
+      setLoading(false);
     }
-
-    setTimeout(() => setFading(true), totalMs - 500);
-    setTimeout(onDone, totalMs);
   };
-
-  const mono = { fontFamily: "'SF Mono', 'Menlo', 'Consolas', monospace" };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 2000, opacity: fading ? 0 : 1, transition: "opacity 0.5s ease" }}>
-      <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, opacity: 0.5 }} />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: 24 }}>
-        <div style={{ width: "100%", maxWidth: 560 }}>
-          <pre style={{ ...mono, fontSize: 13, color: "#4ade80", lineHeight: 1.8, margin: 0, textShadow: "0 0 8px rgba(74, 222, 128, 0.5)", whiteSpace: "pre-wrap" }}>
-            {typed}{phase === "typing" && <span style={{ animation: "blink 0.8s steps(1) infinite" }}>█</span>}
-          </pre>
-
-          {phase === "password" && (
-            <div style={{ marginTop: 16 }}>
-              {denied > 0 && (
-                <div style={{ ...mono, fontSize: 13, color: "#f87171", textShadow: "0 0 8px rgba(248, 113, 113, 0.5)", marginBottom: 10, animation: "shake 0.3s ease" }}>
-                  {"> ACCESS DENIED — INVALID CODE"}{denied > 1 ? ` [${denied}]` : ""}
-                </div>
-              )}
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ ...mono, fontSize: 13, color: "#4ade80", textShadow: "0 0 8px rgba(74, 222, 128, 0.5)", whiteSpace: "nowrap" }}>{"> ENTER ACCESS CODE:"}</span>
-                <input
-                  ref={inputRef} type="password" value={pwd}
-                  onChange={e => setPwd(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && submit()}
-                  autoComplete="off" spellCheck={false}
-                  style={{ ...mono, flex: 1, background: "transparent", border: "none", borderBottom: "1px solid #1a4d2a", outline: "none", color: "#4ade80", fontSize: 14, letterSpacing: "0.3em", padding: "2px 4px", caretColor: "#4ade80", textShadow: "0 0 8px rgba(74, 222, 128, 0.5)" }}
-                />
-                <button onClick={submit} style={{ ...mono, background: "rgba(74, 222, 128, 0.08)", border: "1px solid #1a4d2a", color: "#4ade80", borderRadius: 3, padding: "4px 12px", fontSize: 11, cursor: "pointer", letterSpacing: "0.1em" }}>ENTER</button>
-              </div>
-            </div>
-          )}
-
-          {phase === "granted" && (() => {
-            const sz = "clamp(11px, 2.8vw, 24px)";
-            const FLASHC = ["74, 222, 128", "250, 204, 21", "250, 204, 21", "147, 197, 253", "34, 211, 238", "240, 171, 252", "239, 68, 68", "249, 115, 22", "192, 132, 252", "255, 255, 255"];
-            const SUBS = [
-              { t: "★ ACCESS UNLOCKED ★", c: "#facc15" },
-              { t: "▲ +1000 XP — NEW STAGE UNLOCKED ▲", c: "#4ade80" },
-              { t: "7 · 7 · 7 — JACKPOT PAYOUT: FULL ACCESS", c: "#facc15" },
-              { t: "HYPERSPACE JUMP COMPLETE — WELCOME ABOARD", c: "#93c5fd" },
-              { t: "SIGNAL RESTORED — TRANSMISSION STABLE", c: "#22d3ee" },
-              { t: "NIGHT DRIVE MODE — INITIATED", c: "#f0abfc" },
-              { t: "CLEARANCE LEVEL 5 — EYES ONLY", c: "#ef4444" },
-              { t: "ORBIT REACHED — ALL SYSTEMS GO", c: "#fdba74" },
-              { t: "LEGENDARY ITEM ACQUIRED", c: "#c084fc" },
-              { t: "GRAND FINALE — ENJOY THE SHOW", c: "#ffffff" },
-            ];
-            const TXT = [
-              { color: "#4ade80", textShadow: "0 0 20px rgba(74, 222, 128, 0.8), 0 0 40px rgba(74, 222, 128, 0.4)", animation: lockedIn ? "jackpotPulse 0.8s ease infinite" : "none" },
-              { color: "#facc15", textShadow: "3px 3px 0 #7c2d12", animation: "arcadeBounce 0.5s ease" },
-              { color: "#fde68a", textShadow: "0 0 25px rgba(250, 204, 21, 0.9)", animation: lockedIn ? "jackpotPulse 0.7s ease infinite" : "none" },
-              { color: "#e0f2fe", textShadow: "0 0 24px rgba(147, 197, 253, 0.9)", animation: "zoomFar 0.8s ease-out" },
-              null,
-              { background: "linear-gradient(180deg, #f0abfc 30%, #22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 0 12px rgba(240, 171, 252, 0.7))", animation: "neonFlicker 2s linear infinite" },
-              { color: "#e5e5e5" },
-              { color: "#fdba74", textShadow: "0 0 20px rgba(249, 115, 22, 0.8)", animation: lockedIn ? "jackpotPulse 0.8s ease infinite" : "none" },
-              { color: "#e9d5ff", textShadow: "0 0 24px rgba(167, 139, 250, 0.9)", animation: lockedIn ? "jackpotPulse 0.8s ease infinite" : "none" },
-              { color: "#ffffff", textShadow: "0 0 20px rgba(255, 255, 255, 0.9)", animation: lockedIn ? "jackpotPulse 0.9s ease infinite" : "none" },
-            ];
-            return (
-              <>
-                {flash && <div style={{ position: "fixed", inset: 0, background: `radial-gradient(circle, rgba(${FLASHC[variant]}, 0.55), rgba(0, 0, 0, 0) 70%)`, animation: "flashOut 0.5s ease forwards", pointerEvents: "none", zIndex: 3 }} />}
-                {particles.map(p => (
-                  <span key={p.id} style={{ position: "fixed", left: p.left, top: p.top, width: p.w, height: p.h, background: p.color, borderRadius: 1, opacity: 0, pointerEvents: "none", zIndex: 3, "--dx": p.dx + "px", "--dy": p.dy + "px", "--rot": p.rot + "deg", animation: `${p.anim} ${p.dur}s cubic-bezier(0.1, 0.8, 0.3, 1) ${p.delay}s forwards` }} />
-                ))}
-                <pre style={{ ...mono, fontSize: 13, color: "#4ade80", lineHeight: 1.8, margin: "8px 0 0", textShadow: "0 0 8px rgba(74, 222, 128, 0.5)", whiteSpace: "pre-wrap" }}>
-                  {"> Verifying access .................. GRANTED"}
-                </pre>
-
-                {variant === 2 && (
-                  <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24 }}>
-                    {reels.map((r, i) => (
-                      <div key={i} style={{ ...mono, width: 54, height: 64, background: "#0a0a0a", border: "2px solid #facc15", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, color: "#facc15", boxShadow: "0 0 18px rgba(250, 204, 21, 0.35)" }}>{r}</div>
-                    ))}
-                  </div>
-                )}
-                {variant === 7 && count !== null && (
-                  <div key={count} style={{ ...mono, fontSize: 64, fontWeight: 700, color: "#fdba74", textAlign: "center", marginTop: 24, textShadow: "0 0 30px rgba(249, 115, 22, 0.8)", animation: "countPop 0.6s ease" }}>{count}</div>
-                )}
-                {variant === 7 && count === null && (
-                  <div style={{ fontSize: 48, textAlign: "center", marginTop: 12, animation: "riseUp 1.8s ease-in forwards" }}>🚀</div>
-                )}
-                {variant === 8 && !scramble && (
-                  <div style={{ fontSize: 60, textAlign: "center", marginTop: 24, animation: "chestShake 0.18s linear infinite" }}>🎁</div>
-                )}
-
-                {scramble && (
-                  variant === 4 ? (
-                    <div style={{ position: "relative", marginTop: 32, textAlign: "center" }}>
-                      <div style={{ ...mono, position: "absolute", inset: 0, fontSize: sz, fontWeight: 700, color: "#22d3ee", letterSpacing: "0.12em", whiteSpace: "nowrap", opacity: 0.6, animation: "glitchJit 0.4s steps(2) infinite" }}>{scramble}</div>
-                      <div style={{ ...mono, position: "absolute", inset: 0, fontSize: sz, fontWeight: 700, color: "#f87171", letterSpacing: "0.12em", whiteSpace: "nowrap", opacity: 0.6, animation: "glitchJit 0.35s steps(2) infinite reverse" }}>{scramble}</div>
-                      <div style={{ ...mono, position: "relative", fontSize: sz, fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", whiteSpace: "nowrap" }}>{scramble}</div>
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: 32, ...mono, fontSize: sz, fontWeight: 700, letterSpacing: "0.12em", textAlign: "center", whiteSpace: "nowrap", ...TXT[variant] }}>
-                      {scramble}
-                    </div>
-                  )
-                )}
-
-                {variant === 6 && lockedIn && (
-                  <div style={{ ...mono, margin: "18px auto 0", width: "fit-content", padding: "6px 18px", border: "3px solid #ef4444", color: "#ef4444", fontSize: 16, fontWeight: 700, letterSpacing: "0.2em", transform: "rotate(-8deg)", animation: "stampIn 0.25s ease-in", borderRadius: 4 }}>ACCESS GRANTED</div>
-                )}
-                {lockedIn && (
-                  <div style={{ ...mono, fontSize: 11, color: SUBS[variant].c, letterSpacing: "0.3em", textAlign: "center", marginTop: 16, textShadow: `0 0 14px ${SUBS[variant].c}88`, animation: "welcomeIn 0.4s ease", whiteSpace: "nowrap" }}>
-                    {SUBS[variant].t}
-                  </div>
-                )}
-              </>
-            );
-          })()}
+    <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse at 50% 30%, #0e1638, #070b1e)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ width: "100%", maxWidth: 380, padding: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontSize: 28, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", color: "#eaf0ff", marginBottom: 6 }}>Production <span style={{ color: "#3fb3cb" }}>Hub</span></div>
+          <div style={{ fontSize: 12, color: "#7581b0", letterSpacing: ".05em" }}>Exclusive property marketing assets</div>
         </div>
+        <div style={{ background: "rgba(20,30,68,0.55)", border: "1px solid rgba(120,150,255,0.12)", borderRadius: 16, padding: 24, backdropFilter: "blur(10px)" }}>
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#7581b0", marginBottom: 6, fontWeight: 600 }}>Username</label>
+            <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Enter username" autoFocus autoComplete="username" style={{ width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+          </div>
+          <div style={{ marginBottom: 22 }}>
+            <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#7581b0", marginBottom: 6, fontWeight: 600 }}>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Enter password" autoComplete="current-password" style={{ width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+          </div>
+          {error && <div style={{ fontSize: 12, color: "#ff8098", marginBottom: 14, textAlign: "center" }}>{error}</div>}
+          <button onClick={submit} disabled={loading} style={{ width: "100%", fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#04121a", background: "linear-gradient(135deg, #35f0a0, #3fb3cb)", border: "none", borderRadius: 11, padding: "12px", cursor: loading ? "wait" : "pointer", boxShadow: "0 0 20px rgba(53,240,160,.2)" }}>{loading ? "Signing in..." : "Sign in"}</button>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#7581b0" }}>Coreo Real Estate</div>
       </div>
-      <style>{`
-        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
-        @keyframes welcomeIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-        @keyframes flashOut { from { opacity: 1; } to { opacity: 0; } }
-        @keyframes burst { 0% { transform: translate(-50%, -50%) translate(0, 0) rotate(0deg); opacity: 1; } 100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
-        @keyframes streak { 0% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(0) scaleY(0.3); opacity: 0.9; } 100% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(var(--dy)) scaleY(1.5); opacity: 0; } }
-        @keyframes jackpotPulse { 0%, 100% { transform: scale(1); text-shadow: 0 0 20px rgba(74, 222, 128, 0.8), 0 0 40px rgba(74, 222, 128, 0.4); } 50% { transform: scale(1.06); text-shadow: 0 0 30px rgba(74, 222, 128, 1), 0 0 70px rgba(74, 222, 128, 0.7), 0 0 110px rgba(250, 204, 21, 0.4); } }
-        @keyframes arcadeBounce { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-        @keyframes zoomFar { from { transform: scale(5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes glitchJit { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-3px, 2px); } 40% { transform: translate(3px, -2px); } 60% { transform: translate(-2px, -1px); } 80% { transform: translate(2px, 2px); } }
-        @keyframes neonFlicker { 0%, 18%, 22%, 25%, 54%, 56%, 100% { opacity: 1; } 20%, 24%, 55% { opacity: 0.35; } }
-        @keyframes stampIn { from { transform: rotate(-8deg) scale(3); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
-        @keyframes riseUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-70vh); opacity: 0; } }
-        @keyframes chestShake { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
-        @keyframes countPop { from { transform: scale(1.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-      `}</style>
     </div>
   );
 }
@@ -809,7 +554,13 @@ export default function CoreoProductionHub() {
   const [settings, setSettings, p6] = usePersistedState("coreo-settings", {});
 
   const isMobile = useIsMobile();
-  const [booted, setBooted] = useState(false);
+    const [authed, setAuthed] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthChange(user => { setAuthed(!!user); setAuthChecked(true); });
+    return unsub;
+  }, []);
   const [view, setView] = useState("dashboard");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [search, setSearch] = useState("");
@@ -881,10 +632,15 @@ export default function CoreoProductionHub() {
 
   const hasActiveFilters = search || filterType !== "all" || filterZone !== "all" || filterStatus !== "all";
 
-  if (!booted) return <BootScreen onDone={() => setBooted(true)} />;
+    if (!authChecked) return (
+    <div style={{ background: "#070b1e", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#7581b0", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ fontSize: 13, letterSpacing: "0.15em", textTransform: "uppercase" }}>Loading...</div>
+    </div>
+  );
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
   if (loading) return (
-    <div style={{ background: "#0a0a0a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#444", fontFamily: "'Söhne', 'Helvetica Neue', sans-serif" }}>
+        <div style={{ background: "#070b1e", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#7581b0", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ fontSize: 13, letterSpacing: "0.15em", textTransform: "uppercase" }}>Loading Production Hub</div>
     </div>
   );
@@ -1164,6 +920,7 @@ export default function CoreoProductionHub() {
         </div>
         <div className="nav-right">
           <button className="btn-primary" onClick={() => setShowAddModal(true)}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Exclusive Property</button>
+          <button onClick={() => { if (window.confirm("Sign out?")) logout(); }} style={{ background: "transparent", border: "1px solid rgba(120,150,255,0.22)", color: "#7581b0", borderRadius: 9, padding: "8px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
         </div>
       </div>
 
