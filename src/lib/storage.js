@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
 const app = initializeApp({
@@ -33,6 +33,18 @@ export const storage = {
       console.error("storage.set error:", e);
       return null;
     }
+  },
+  subscribe(key, callback) {
+    return onSnapshot(doc(db, "hub", key), (snap) => {
+      if (snap.exists()) {
+        callback(snap.data().value);
+      } else {
+        callback(null);
+      }
+    }, (err) => {
+      console.error("storage.subscribe error:", err);
+      callback(null);
+    });
   },
 };
 
