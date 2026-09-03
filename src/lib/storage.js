@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
 const app = initializeApp({
   apiKey: "AIzaSyARbPucKQEcaGScfy6OkxVPlhEDm553AcQ",
@@ -11,6 +12,7 @@ const app = initializeApp({
 });
 
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 export const storage = {
   async get(key) {
@@ -33,3 +35,12 @@ export const storage = {
     }
   },
 };
+
+export const loginWithUsername = async (username, password) => {
+  const email = username.toLowerCase().replace(/\s+/g, "") + "@coreo.hub";
+  return signInWithEmailAndPassword(auth, email, password);
+};
+
+export const logout = () => signOut(auth);
+
+export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
