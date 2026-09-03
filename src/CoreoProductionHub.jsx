@@ -17,7 +17,7 @@ const STATUSES = [
   { id: "approved", label: "Approved", color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
 ];
 
-const TYPE_COLORS = {
+const DEFAULT_TYPE_COLORS = {
   "Residential": "#6b8afd",
   "Residential Compound": "#4ade80",
   "Residential Villas": "#34d399",
@@ -28,6 +28,8 @@ const TYPE_COLORS = {
   "Mixed Use – Shops & Offices": "#fb923c",
   "Mixed Use – Residential & Commercial": "#f97316",
 };
+const DEFAULT_ZONES = ["The Pearl", "Central", "West Bay", "South", "North", "Downtown"];
+const TYPE_COLOR_PALETTE = ["#6b8afd", "#4ade80", "#34d399", "#f0a030", "#c084fc", "#e879f9", "#f472b6", "#fb923c", "#f97316", "#22d3ee", "#f87171", "#facc15"];
 
 const SPEC_CATEGORIES = [
   {
@@ -578,9 +580,14 @@ export default function CoreoProductionHub() {
   const [activeBrief, setActiveBrief] = useState(null);
   const [specTab, setSpecTab] = useState("general");
   const [showAddModal, setShowAddModal] = useState(false);
-  const emptyProp = { name: "", location: "", type: Object.keys(TYPE_COLORS)[0], zone: "The Pearl" };
+    const TYPE_COLORS = settings?.typeColors || DEFAULT_TYPE_COLORS;
+  const ZONE_OPTIONS = settings?.zones || DEFAULT_ZONES;
+  const emptyProp = { name: "", location: "", type: Object.keys(TYPE_COLORS)[0], zone: ZONE_OPTIONS[0] };
   const [newProp, setNewProp] = useState(emptyProp);
-  const ZONE_OPTIONS = ["The Pearl", "Central", "West Bay", "South", "North", "Downtown"];
+  const [addingZone, setAddingZone] = useState(false);
+  const [newZone, setNewZone] = useState("");
+  const [addingType, setAddingType] = useState(false);
+  const [newType, setNewType] = useState("");
   const addProperty = () => {
     const name = newProp.name.trim();
     if (!name) return;
@@ -785,6 +792,21 @@ export default function CoreoProductionHub() {
 .setg-btn{font-family:inherit;font-size:12.5px;font-weight:600;color:#04121a;background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;border-radius:9px;padding:9px 14px;cursor:pointer;text-align:center;display:inline-block}
 .setg-btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--ink-2)}
 .setg-btn.danger{background:transparent;border:1px solid rgba(255,80,110,.4);color:#ff8098}
+.stag-list{display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px 16px}
+.stag{display:flex;align-items:center;gap:6px;font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--line);background:rgba(7,11,30,.5);color:var(--ink-2)}
+.stag .tdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stag .tx{background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:12px;padding:0 0 0 2px}
+.stag .tx:hover{color:#ff8098}
+.stag-add{display:flex;align-items:center;gap:5px;font-size:11px;padding:5px 10px;border-radius:7px;border:1px dashed var(--line-2);color:var(--ink-dim);background:transparent;cursor:pointer;font-family:inherit}
+.stag-add:hover{border-color:var(--cyan);color:var(--cyan)}
+.stag-input{display:flex;align-items:center;gap:6px}
+.stag-input input{background:rgba(7,11,30,.6);border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:5px 10px;font-size:11px;font-family:inherit;outline:none;width:140px}
+.stag-input input:focus{border-color:var(--cyan)}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--line)}
+.user-row.first{border-top:none}
+.uavatar{width:32px;height:32px;border-radius:50%;background:rgba(63,179,203,0.15);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--cyan);flex-shrink:0}
+.ubadge{font-size:9px;padding:2px 8px;border-radius:5px;font-weight:600;letter-spacing:.03em}
+.ubadge.admin{color:var(--appr);background:rgba(53,240,160,0.1)}
 .setg-foot{font-size:11.5px;color:var(--ink-dim);text-align:center;margin-top:20px}
 
 /* ── detail page ── */
@@ -1243,18 +1265,18 @@ export default function CoreoProductionHub() {
             </div>
           )}
         </div>
-            ) : view === "settings" ? (
+ ) : view === "settings" ? (
         <div className="wrap">
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <div className="setg-h">Settings</div>
-            <div className="setg-sub">Branding and data for the Production Hub.</div>
+            <div className="setg-sub">Branding, configuration, and data management.</div>
 
             <div className="panel setg-card">
               <div className="setg-sec">Branding</div>
               <div className="setg-row first">
                 <div>
                   <div className="setg-label">Logo</div>
-                  <div className="setg-hint">PNG or SVG, shown in the top-left. Saved with your data.</div>
+                  <div className="setg-hint">Shown in the nav bar. PNG or SVG recommended.</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <div className="setg-logo"><img src={settings?.logoUrl || "https://mycoreo.com/coreo-logo.png"} alt="logo" /></div>
@@ -1267,9 +1289,94 @@ export default function CoreoProductionHub() {
                         reader.readAsDataURL(file);
                       }} />
                     </label>
-                    {settings?.logoUrl && <button className="setg-btn ghost" onClick={() => setSettings(prev => { const n = { ...(prev || {}) }; delete n.logoUrl; return n; })}>Reset to default</button>}
+                    {settings?.logoUrl && <button className="setg-btn ghost" onClick={() => setSettings(prev => { const n = { ...(prev || {}) }; delete n.logoUrl; return n; })}>Reset</button>}
                   </div>
                 </div>
+              </div>
+              <div className="setg-row">
+                <div>
+                  <div className="setg-label">Company name</div>
+                  <div className="setg-hint">Appears on generated briefs and exports.</div>
+                </div>
+                <input value={settings?.companyName || "Coreo Real Estate"} onChange={e => setSettings(prev => ({ ...(prev || {}), companyName: e.target.value }))} className="dinput" style={{ width: 200, fontSize: 12, padding: "7px 10px", textAlign: "right" }} />
+              </div>
+            </div>
+
+            <div className="panel setg-card">
+              <div className="setg-sec">Zones</div>
+              <div style={{ padding: "4px 18px 0" }}><div className="setg-hint">Organize properties by area. Used in filters and the dashboard breakdown.</div></div>
+              <div className="stag-list">
+                {ZONE_OPTIONS.map(z => (
+                  <div key={z} className="stag">{z}
+                    <button className="tx" title="Remove zone" onClick={() => {
+                      if (!window.confirm(`Remove zone "${z}"? Properties in this zone keep their current zone label.`)) return;
+                      setSettings(prev => ({ ...(prev || {}), zones: (prev?.zones || DEFAULT_ZONES).filter(x => x !== z) }));
+                    }}>×</button>
+                  </div>
+                ))}
+                {addingZone ? (
+                  <div className="stag-input">
+                    <input value={newZone} onChange={e => setNewZone(e.target.value)} onKeyDown={e => {
+                      if (e.key === "Enter" && newZone.trim()) { setSettings(prev => ({ ...(prev || {}), zones: [...(prev?.zones || DEFAULT_ZONES), newZone.trim()] })); setNewZone(""); setAddingZone(false); }
+                      if (e.key === "Escape") { setAddingZone(false); setNewZone(""); }
+                    }} placeholder="Zone name" autoFocus />
+                    <button className="setg-btn" style={{ padding: "4px 10px", fontSize: 10 }} onClick={() => { if (newZone.trim()) { setSettings(prev => ({ ...(prev || {}), zones: [...(prev?.zones || DEFAULT_ZONES), newZone.trim()] })); setNewZone(""); setAddingZone(false); } }}>Add</button>
+                    <button className="setg-btn ghost" style={{ padding: "4px 10px", fontSize: 10 }} onClick={() => { setAddingZone(false); setNewZone(""); }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="stag-add" onClick={() => setAddingZone(true)}>+ Add zone</button>
+                )}
+              </div>
+            </div>
+
+            <div className="panel setg-card">
+              <div className="setg-sec">Property types</div>
+              <div style={{ padding: "4px 18px 0" }}><div className="setg-hint">Each type gets its own color on dashboard cards.</div></div>
+              <div className="stag-list">
+                {Object.entries(TYPE_COLORS).map(([t, c]) => (
+                  <div key={t} className="stag"><span className="tdot" style={{ background: c }} />{t}
+                    <button className="tx" title="Remove type" onClick={() => {
+                      if (!window.confirm(`Remove type "${t}"? Properties with this type keep their current label.`)) return;
+                      const tc = { ...TYPE_COLORS }; delete tc[t];
+                      setSettings(prev => ({ ...(prev || {}), typeColors: tc }));
+                    }}>×</button>
+                  </div>
+                ))}
+                {addingType ? (
+                  <div className="stag-input">
+                    <input value={newType} onChange={e => setNewType(e.target.value)} onKeyDown={e => {
+                      if (e.key === "Enter" && newType.trim()) {
+                        const color = TYPE_COLOR_PALETTE[Object.keys(TYPE_COLORS).length % TYPE_COLOR_PALETTE.length];
+                        setSettings(prev => ({ ...(prev || {}), typeColors: { ...TYPE_COLORS, [newType.trim()]: color } }));
+                        setNewType(""); setAddingType(false);
+                      }
+                      if (e.key === "Escape") { setAddingType(false); setNewType(""); }
+                    }} placeholder="Type name" autoFocus />
+                    <button className="setg-btn" style={{ padding: "4px 10px", fontSize: 10 }} onClick={() => {
+                      if (newType.trim()) {
+                        const color = TYPE_COLOR_PALETTE[Object.keys(TYPE_COLORS).length % TYPE_COLOR_PALETTE.length];
+                        setSettings(prev => ({ ...(prev || {}), typeColors: { ...TYPE_COLORS, [newType.trim()]: color } }));
+                        setNewType(""); setAddingType(false);
+                      }
+                    }}>Add</button>
+                    <button className="setg-btn ghost" style={{ padding: "4px 10px", fontSize: 10 }} onClick={() => { setAddingType(false); setNewType(""); }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button className="stag-add" onClick={() => setAddingType(true)}>+ Add type</button>
+                )}
+              </div>
+            </div>
+
+            <div className="panel setg-card">
+              <div className="setg-sec" style={{ display: "flex", alignItems: "center", gap: 8 }}>Team access <span style={{ fontSize: 9, color: "var(--ink-dim)", fontWeight: 400, letterSpacing: 0, textTransform: "none" }}>coming soon</span></div>
+              <div style={{ padding: "4px 18px 0" }}><div className="setg-hint">Individual accounts with admin or view-only roles. Currently everyone shares one login.</div></div>
+              <div className="user-row first">
+                <div className="uavatar">EX</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "var(--ink)" }}>Exclusives</div><div style={{ fontSize: 10, color: "var(--ink-dim)" }}>exclusives@coreo.hub</div></div>
+                <span className="ubadge admin">Admin</span>
+              </div>
+              <div style={{ padding: "10px 18px 16px" }}>
+                <button className="setg-btn ghost" style={{ width: "100%", textAlign: "center", opacity: 0.4, cursor: "not-allowed" }}>Add team member</button>
               </div>
             </div>
 
@@ -1277,8 +1384,8 @@ export default function CoreoProductionHub() {
               <div className="setg-sec">Data</div>
               <div className="setg-row first">
                 <div>
-                  <div className="setg-label">Backup</div>
-                  <div className="setg-hint">Download everything — properties, statuses, specs, notes, links — as a JSON file.</div>
+                  <div className="setg-label">Export backup</div>
+                  <div className="setg-hint">Download everything as a JSON file — properties, statuses, specs, notes, and links.</div>
                 </div>
                 <button className="setg-btn" onClick={() => {
                   const data = { properties, assetStatuses, propertySpecs, notes, assetLinks, settings };
@@ -1289,14 +1396,51 @@ export default function CoreoProductionHub() {
               </div>
               <div className="setg-row">
                 <div>
-                  <div className="setg-label">Reset statuses</div>
-                  <div className="setg-hint">Sets every asset on every property back to Not Started. Specs, notes and links are kept.</div>
+                  <div className="setg-label">Import backup</div>
+                  <div className="setg-hint">Restore from a previously exported JSON file. This replaces all current data.</div>
                 </div>
-                <button className="setg-btn danger" onClick={() => { if (window.confirm("Reset every asset on every property back to Not Started?")) setAssetStatuses({}); }}>Reset all statuses</button>
+                <label className="setg-btn">Import JSON
+                  <input type="file" accept=".json" style={{ display: "none" }} onChange={e => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    if (!window.confirm("This will replace ALL current data with the imported file. Continue?")) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      try {
+                        const d = JSON.parse(reader.result);
+                        if (d.properties) setProperties(d.properties);
+                        if (d.assetStatuses) setAssetStatuses(d.assetStatuses);
+                        if (d.propertySpecs) setPropertySpecs(d.propertySpecs);
+                        if (d.notes) setNotes(d.notes);
+                        if (d.assetLinks) setAssetLinks(d.assetLinks);
+                        if (d.settings) setSettings(d.settings);
+                        window.alert("Import complete.");
+                      } catch { window.alert("Invalid JSON file."); }
+                    };
+                    reader.readAsText(file);
+                  }} />
+                </label>
+              </div>
+              <div className="setg-row">
+                <div>
+                  <div className="setg-label">Reset all statuses</div>
+                  <div className="setg-hint">Sets every asset on every property back to Not Started. Specs, notes, and links are kept.</div>
+                </div>
+                <button className="setg-btn danger" onClick={() => { if (window.confirm("Reset every asset on every property back to Not Started?")) setAssetStatuses({}); }}>Reset statuses</button>
+              </div>
+              <div className="setg-row">
+                <div>
+                  <div className="setg-label">Delete all data</div>
+                  <div className="setg-hint">Permanently removes everything. Cannot be undone.</div>
+                </div>
+                <button className="setg-btn danger" onClick={() => {
+                  if (!window.confirm("DELETE EVERYTHING? Properties, statuses, specs, notes, links — all gone. This cannot be undone.")) return;
+                  if (!window.confirm("Are you absolutely sure?")) return;
+                  setProperties([]); setAssetStatuses({}); setPropertySpecs({}); setNotes({}); setAssetLinks({}); setSettings({});
+                }}>Delete everything</button>
               </div>
             </div>
 
-            <div className="setg-foot">Data is saved in this browser for now. Once Firebase is connected it will sync across devices and users.</div>
+            <div className="setg-foot">Data syncs in real time across all devices via Firebase. Coreo Production Hub v1.0</div>
           </div>
         </div>
       ) : null}
