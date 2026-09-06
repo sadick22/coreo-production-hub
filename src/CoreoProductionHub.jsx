@@ -50,6 +50,8 @@ const SPEC_CATEGORIES = [
       { id: "built_up_area", label: "Built-Up Area (sqm)", placeholder: "e.g. 380" },
       { id: "floors", label: "Floors / Levels", placeholder: "e.g. 3, G+2" },
       { id: "units", label: "Total Units", placeholder: "e.g. 120 apartments" },
+      { id: "total_units", label: "Total Units (number)", placeholder: "e.g. 96", essential: true },
+      { id: "occupied_units", label: "Occupied Units (number)", placeholder: "e.g. 82", essential: true },
       { id: "bedrooms", label: "Bedrooms", placeholder: "e.g. 3, or 1-4 (range)", essential: true },
       { id: "bathrooms", label: "Bathrooms", placeholder: "e.g. 4", essential: true },
       { id: "living_areas", label: "Living Areas", placeholder: "e.g. Open plan, Majlis + living" },
@@ -392,6 +394,51 @@ function generateBrief(assetId, prop, specs) {
   return { title: "BRIEF", subtitle: nm, sections: [{ heading: "INFO", content: "Template not available." }] };
 }
 
+// ─── Image + Occupancy helpers ───
+
+function compressImage(file, maxEdge = 1000, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxEdge) { height = Math.round(height * maxEdge / width); width = maxEdge; }
+        else if (height >= width && height > maxEdge) { width = Math.round(width * maxEdge / height); height = maxEdge; }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function occupancyPct(specs) {
+  const t = parseFloat(specs?.total_units), o = parseFloat(specs?.occupied_units);
+  if (!isFinite(t) || t <= 0 || !isFinite(o)) return null;
+  return Math.max(0, Math.min(100, Math.round(o / t * 100)));
+}
+function occColor(p) { return p >= 80 ? "#35f0a0" : p >= 50 ? "#ffb23e" : "#ff8098"; }
+
+function OccRing({ pct, size = 20 }) {
+  const stroke = Math.max(2, size * 0.13);
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - pct / 100);
+  const col = occColor(pct);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(120,150,255,.16)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+    </svg>
+  );
+}
+
 // ─── Hooks & Components ───
 
 function usePersistedState(key, defaultVal) {
@@ -565,6 +612,25 @@ export default function CoreoProductionHub() {
     const unsub = onAuthChange(user => { setAuthed(!!user); setAuthChecked(true); });
     return unsub;
   }, []);
+
+  // Property images live in their own Firestore docs (one per property) to keep
+  // the properties array tiny and avoid the 1MB per-document limit. They change
+  // rarely, so we fetch (not subscribe) once per property.
+  useEffect(() => {
+    if (!properties) return;
+    let cancelled = false;
+    (async () => {
+      for (const p of properties) {
+        if (images[p.id] !== undefined) continue;
+        try {
+          const r = await storage.get(`coreo-img-${p.id}`);
+          if (cancelled) return;
+          setImages(prev => ({ ...prev, [p.id]: (r && r.value) ? r.value : null }));
+        } catch { if (!cancelled) setImages(prev => ({ ...prev, [p.id]: null })); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [properties]);
   const [view, setView] = useState("dashboard");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [search, setSearch] = useState("");
@@ -588,6 +654,8 @@ export default function CoreoProductionHub() {
   const [newZone, setNewZone] = useState("");
   const [addingType, setAddingType] = useState(false);
   const [newType, setNewType] = useState("");
+  const [images, setImages] = useState({});
+  const [imgUploading, setImgUploading] = useState(false);
   const addProperty = () => {
     const name = newProp.name.trim();
     if (!name) return;
@@ -600,6 +668,23 @@ export default function CoreoProductionHub() {
     if (!window.confirm(`Remove "${p?.name}" from the exclusive portfolio? This clears its tracking.`)) return;
     setProperties(prev => (prev || []).filter(x => x.id !== id));
     setAssetStatuses(prev => { const n = { ...prev }; ASSET_TYPES.forEach(a => delete n[`${id}-${a.id}`]); return n; });
+    storage.set(`coreo-img-${id}`, "").catch(() => {});
+    setImages(prev => ({ ...prev, [id]: null }));
+  };
+
+  const uploadImage = async (propId, file) => {
+    if (!file) return;
+    setImgUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      await storage.set(`coreo-img-${propId}`, dataUrl);
+      setImages(prev => ({ ...prev, [propId]: dataUrl }));
+    } catch (e) { console.error(e); window.alert("Could not process that image. Try a different file (JPG or PNG)."); }
+    setImgUploading(false);
+  };
+  const removeImage = async (propId) => {
+    try { await storage.set(`coreo-img-${propId}`, ""); } catch (e) { console.error(e); }
+    setImages(prev => ({ ...prev, [propId]: null }));
   };
 
   const loading = p1 || p2 || p3 || p4 || p5 || p6;
@@ -656,6 +741,7 @@ export default function CoreoProductionHub() {
 
   const propDetail = selectedProperty ? properties.find(p => p.id === selectedProperty) : null;
   const specs = propertySpecs?.[selectedProperty] || {};
+  const occDetail = occupancyPct(specs);
   const propNotes = notes?.[`${selectedProperty}`] || [];
   const filledCount = ALL_SPEC_IDS.filter(f => specs[f]).length;
   const essFilled = ESSENTIAL_FIELDS.filter(f => specs[f.id]).length;
@@ -726,19 +812,31 @@ export default function CoreoProductionHub() {
 .search input::placeholder{color:var(--ink-dim)}
 .selx{background:rgba(7,11,30,.6);border:1px solid var(--line);color:var(--ink-2);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:12.5px;cursor:pointer;outline:none}
 .portfolio{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:13px;padding:16px 18px}
-.card{position:relative;background:linear-gradient(180deg,rgba(16,24,56,.6),rgba(11,17,42,.5));border:1px solid var(--line);border-radius:14px;padding:15px;cursor:pointer;transition:.16s;overflow:visible}
-.card:hover{border-color:var(--line-2);transform:translateY(-2px);box-shadow:0 12px 34px rgba(0,0,0,.4)}
-.card .edge{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--tc);border-radius:14px 0 0 14px;box-shadow:0 0 12px var(--tc)}
+.card{position:relative;background:linear-gradient(180deg,rgba(16,24,56,.6),rgba(11,17,42,.5));border:1px solid var(--line);border-radius:16px;cursor:pointer;transition:.18s;overflow:hidden}
+.card:hover{border-color:var(--line-2);transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.45)}
+.card-img{position:relative;height:178px;background-size:cover;background-position:center;background-color:#0d1636}
+.card-img .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,11,30,.12) 0%,rgba(7,11,30,0) 32%,rgba(7,11,30,.22) 60%,rgba(9,13,32,.88) 100%)}
+.card-img.noimg{display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 0%, color-mix(in srgb,var(--tc) 20%,transparent), transparent 68%),linear-gradient(180deg,rgba(16,24,56,.9),rgba(11,17,42,.9))}
+.card-img .noimg-inner{text-align:center;color:var(--ink-dim);transform:translateY(-14px)}
+.card-img .noimg-inner .glyph{font-size:28px;opacity:.5;margin-bottom:5px}
+.card-img .noimg-inner .t{font-size:11px;letter-spacing:.04em}
 .tbadge{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tc);background:color-mix(in srgb,var(--tc) 16%,transparent);padding:3px 8px;border-radius:6px;display:inline-block}
-.card h3{font-family:'Space Grotesk';font-size:15px;font-weight:500;margin:11px 0 3px;line-height:1.25}
-.card .loc{font-size:11.5px;color:var(--ink-dim)}
-.strip{display:flex;gap:5px;margin-top:14px}
+.card-img .tbadge{position:absolute;top:12px;left:12px;z-index:3;color:#fff;background:color-mix(in srgb,var(--tc) 82%,rgba(7,11,30,.4));backdrop-filter:blur(4px);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.overlay-txt{position:absolute;left:14px;right:14px;bottom:12px;z-index:3}
+.overlay-txt h3{font-family:'Space Grotesk';font-size:16px;font-weight:600;line-height:1.2;color:var(--ink);text-shadow:0 2px 12px rgba(0,0,0,.75);margin:0}
+.overlay-txt .oloc{font-size:11.5px;color:#c3cdf3;margin-top:3px;text-shadow:0 1px 8px rgba(0,0,0,.75);display:flex;align-items:center;gap:5px}
+.occ{position:absolute;top:12px;right:44px;z-index:3;display:flex;align-items:center;gap:6px;background:rgba(9,13,32,.62);border:1px solid var(--line);border-radius:10px;padding:4px 9px 4px 5px;backdrop-filter:blur(6px)}
+.occ .otxt{line-height:1.05}
+.occ .opct{font-family:'Space Grotesk';font-size:11px;font-weight:600;letter-spacing:-.01em}
+.occ .olab{font-size:6.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);font-weight:600}
+.card-body{padding:13px 15px 15px}
+.strip{display:flex;gap:5px;margin-top:2px}
 .seg{flex:1;text-align:center;cursor:pointer;position:relative}
-.seg .bar{height:26px;border-radius:6px;transition:.18s}
+.seg .bar{height:24px;border-radius:6px;transition:.18s}
 .seg:hover .bar{transform:scaleY(1.1)}
 .seg .cap{font-size:8.5px;color:var(--ink-dim);margin-top:5px;font-weight:600}
 .cardfoot{display:flex;align-items:center;justify-content:space-between;margin-top:13px;padding-top:11px;border-top:1px solid var(--line)}
-.remove{opacity:0;position:absolute;top:11px;right:11px;width:22px;height:22px;border-radius:6px;background:rgba(255,80,110,.14);border:1px solid rgba(255,80,110,.3);color:#ff8098;cursor:pointer;display:grid;place-items:center;font-size:13px;transition:.15s;z-index:5}
+.remove{opacity:0;position:absolute;top:11px;right:11px;width:24px;height:24px;border-radius:7px;background:rgba(9,13,32,.7);border:1px solid rgba(255,80,110,.35);color:#ff8098;cursor:pointer;display:grid;place-items:center;font-size:14px;transition:.15s;z-index:5;backdrop-filter:blur(4px)}
 .card:hover .remove{opacity:1}
 .add-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1.5px dashed var(--line-2);border-radius:14px;cursor:pointer;color:var(--cyan);background:rgba(63,179,203,.04);min-height:100%;padding:24px;transition:.16s}
 .add-card:hover{background:rgba(63,179,203,.09);border-color:var(--cyan)}
@@ -888,6 +986,15 @@ export default function CoreoProductionHub() {
 .dcols{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
 .dcmd{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:18px}
 .dcmd .dedge{width:3px;height:44px;border-radius:2px;flex-shrink:0}
+.dcmd .dimg{position:relative;width:92px;height:66px;border-radius:11px;flex-shrink:0;background-size:cover;background-position:center;cursor:pointer;overflow:hidden;border:1px solid var(--line);display:grid;place-items:center}
+.dcmd .dimg.empty{background:radial-gradient(120% 100% at 50% 0%, color-mix(in srgb,var(--tc) 22%,transparent), transparent 70%),rgba(7,11,30,.5)}
+.dcmd .dimg-glyph{font-size:22px;color:var(--ink-dim);opacity:.55}
+.dcmd .dimg-over{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:600;letter-spacing:.05em;color:#fff;background:rgba(9,13,32,.55);opacity:0;transition:.15s;text-transform:uppercase}
+.dcmd .dimg:hover .dimg-over{opacity:1}
+.dcmd .dimg-x{position:absolute;top:3px;right:3px;z-index:4;width:18px;height:18px;border-radius:5px;background:rgba(9,13,32,.78);border:1px solid rgba(255,80,110,.4);color:#ff8098;cursor:pointer;display:grid;place-items:center;font-size:11px;line-height:1;padding:0}
+.dcmd .docc{display:flex;align-items:center;gap:7px}
+.dcmd .docc .docc-p{font-family:'Space Grotesk';font-size:15px;font-weight:600;line-height:1}
+.dcmd .docc .docc-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);font-weight:600;margin-top:2px}
 .dcmd .dinfo{flex:1;min-width:0}
 .dcmd .tline{display:flex;align-items:center;gap:8px;margin-bottom:3px}
 .dcmd .nm{font-family:'Space Grotesk';font-size:18px;font-weight:500;letter-spacing:-.01em}
@@ -954,7 +1061,12 @@ export default function CoreoProductionHub() {
           <button className="back" onClick={() => { setSelectedProperty(null); setEditingSpecs(false); }}>← Back to portfolio</button>
 
           <div className="dcmd">
-            <div className="dedge" style={{ background: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", boxShadow: `0 0 10px ${TYPE_COLORS[propDetail.type] || "transparent"}` }} />
+            <label className={`dimg${images[propDetail.id] ? "" : " empty"}`} style={images[propDetail.id] ? { backgroundImage: `url('${images[propDetail.id]}')` } : { "--tc": TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }} title={images[propDetail.id] ? "Change main image" : "Upload main image"}>
+              {!images[propDetail.id] && <span className="dimg-glyph">▤</span>}
+              <span className="dimg-over">{imgUploading ? "…" : (images[propDetail.id] ? "Change" : "Upload")}</span>
+              {images[propDetail.id] && <button className="dimg-x" title="Remove image" onClick={e => { e.preventDefault(); e.stopPropagation(); if (window.confirm("Remove the main image?")) removeImage(propDetail.id); }}>×</button>}
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(propDetail.id, f); e.target.value = ""; }} />
+            </label>
             <div className="dinfo">
               <div className="tline">
                 <span style={{ color: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", fontSize: 11 }}>#{propDetail.id}</span>
@@ -964,6 +1076,12 @@ export default function CoreoProductionHub() {
               <div className="dloc">⚲ {propDetail.location} · {propDetail.zone}</div>
             </div>
             <div className="dright">
+              {occDetail !== null && (
+                <div className="docc">
+                  <OccRing pct={occDetail} size={30} />
+                  <div><div className="docc-p" style={{ color: occColor(occDetail) }}>{occDetail}%</div><div className="docc-l">Occupied</div></div>
+                </div>
+              )}
               <div className="dmini">
                 {ASSET_TYPES.map(a => {
                   const ok = getStatus(propDetail.id, a.id) === "approved";
@@ -1164,29 +1282,38 @@ export default function CoreoProductionHub() {
                 {filteredProperties.map(prop => {
                   const doneCount = getProgress(prop.id);
                   const tcol = TYPE_COLORS[prop.type] || "#7581b0";
+                  const occ = occupancyPct(propertySpecs?.[prop.id] || {});
+                  const img = images[prop.id];
                   return (
                     <div key={prop.id} className="card" style={{ "--tc": tcol }} onClick={() => setSelectedProperty(prop.id)}>
-                      <div className="edge" />
-                      <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>
-                      <div className="tbadge">{prop.type}</div>
-                      <h3>{prop.name}</h3>
-                      <div className="loc">⚲ {prop.location} · {prop.zone}</div>
-                      <div className="strip">
-                        {ASSET_TYPES.map(asset => {
-                          const key = `dash-${prop.id}-${asset.id}`;
-                          const ok = getStatus(prop.id, asset.id) === "approved";
-                          return (
-                            <div key={asset.id} className="seg" title={`${asset.label} — ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
-                              <div className="bar" style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} />
-                              <div className="cap">{asset.short}</div>
-                              {showStatusMenu === key && <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} alignRight={false} />}
-                            </div>
-                          );
-                        })}
+                      <div className={`card-img${img ? "" : " noimg"}`} style={img ? { backgroundImage: `url('${img}')` } : undefined}>
+                        {img && <div className="scrim" />}
+                        <span className="tbadge">{prop.type}</span>
+                        <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>
+                        {occ !== null && (
+                          <div className="occ"><OccRing pct={occ} /><div className="otxt"><div className="opct" style={{ color: occColor(occ) }}>{occ}%</div><div className="olab">Occupied</div></div></div>
+                        )}
+                        {!img && <div className="noimg-inner"><div className="glyph">▤</div><div className="t">No image yet</div></div>}
+                        <div className="overlay-txt"><h3>{prop.name}</h3><div className="oloc">⚲ {prop.location} · {prop.zone}</div></div>
                       </div>
-                      <div className="cardfoot">
-                        <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>
-                        <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>#{prop.id}</div>
+                      <div className="card-body">
+                        <div className="strip">
+                          {ASSET_TYPES.map(asset => {
+                            const key = `dash-${prop.id}-${asset.id}`;
+                            const ok = getStatus(prop.id, asset.id) === "approved";
+                            return (
+                              <div key={asset.id} className="seg" title={`${asset.label} — ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
+                                <div className="bar" style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} />
+                                <div className="cap">{asset.short}</div>
+                                {showStatusMenu === key && <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} alignRight={false} />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="cardfoot">
+                          <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>
+                          <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>#{prop.id}</div>
+                        </div>
                       </div>
                     </div>
                   );
