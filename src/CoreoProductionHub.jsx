@@ -425,10 +425,6 @@ function occupancyPct(specs) {
 }
 function occColor(p) { return p >= 80 ? "#35f0a0" : p >= 50 ? "#ffb23e" : "#ff8098"; }
 
-// Photo slots per property. Slot 0 keeps the original single-cover key so any
-// cover already uploaded automatically becomes photo 1 — no migration needed.
-const imgKey = (id, slot) => slot === 0 ? `coreo-img-${id}` : `coreo-img-${id}-${slot}`;
-
 function OccRing({ pct, size = 20 }) {
   const stroke = Math.max(2, size * 0.13);
   const r = (size - stroke) / 2;
@@ -627,7 +623,7 @@ export default function CoreoProductionHub() {
       for (const p of properties) {
         if (images[p.id] !== undefined) continue;
         try {
-          const r = await storage.get(imgKey(p.id, Number.isInteger(p.coverIdx) ? p.coverIdx : 0));
+          const r = await storage.get(`coreo-img-${p.id}`);
           if (cancelled) return;
           setImages(prev => ({ ...prev, [p.id]: (r && r.value) ? r.value : null }));
         } catch { if (!cancelled) setImages(prev => ({ ...prev, [p.id]: null })); }
@@ -635,37 +631,6 @@ export default function CoreoProductionHub() {
     })();
     return () => { cancelled = true; };
   }, [properties]);
-
-  // Full gallery (all 5 slots) — loaded only when a property detail is opened.
-  useEffect(() => {
-    if (!selectedProperty || galleries[selectedProperty]) return;
-    let cancelled = false;
-    (async () => {
-      const slots = [null, null, null, null, null];
-      for (let s = 0; s < 5; s++) {
-        try { const r = await storage.get(imgKey(selectedProperty, s)); slots[s] = (r && r.value) ? r.value : null; }
-        catch { slots[s] = null; }
-        if (cancelled) return;
-      }
-      setGalleries(prev => ({ ...prev, [selectedProperty]: slots }));
-    })();
-    return () => { cancelled = true; };
-  }, [selectedProperty]);
-
-  // Lightbox keyboard navigation.
-  useEffect(() => {
-    if (lb === null) return;
-    const g = galleries[selectedProperty];
-    const len = Array.isArray(g) ? g.filter(Boolean).length : 0;
-    if (!len) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") setLb(null);
-      else if (e.key === "ArrowLeft") setLb(v => v === null ? v : (v - 1 + len) % len);
-      else if (e.key === "ArrowRight") setLb(v => v === null ? v : (v + 1) % len);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lb, selectedProperty, galleries]);
   const [view, setView] = useState("dashboard");
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [search, setSearch] = useState("");
@@ -690,9 +655,7 @@ export default function CoreoProductionHub() {
   const [addingType, setAddingType] = useState(false);
   const [newType, setNewType] = useState("");
   const [images, setImages] = useState({});
-  const [galleries, setGalleries] = useState({});
   const [imgUploading, setImgUploading] = useState(false);
-  const [lb, setLb] = useState(null);
   const addProperty = () => {
     const name = newProp.name.trim();
     if (!name) return;
@@ -705,44 +668,24 @@ export default function CoreoProductionHub() {
     if (!window.confirm(`Remove "${p?.name}" from the exclusive portfolio? This clears its tracking.`)) return;
     setProperties(prev => (prev || []).filter(x => x.id !== id));
     setAssetStatuses(prev => { const n = { ...prev }; ASSET_TYPES.forEach(a => delete n[`${id}-${a.id}`]); return n; });
-    for (let s = 0; s < 5; s++) storage.set(imgKey(id, s), "").catch(() => {});
+    storage.set(`coreo-img-${id}`, "").catch(() => {});
     setImages(prev => ({ ...prev, [id]: null }));
-    setGalleries(prev => { const n = { ...prev }; delete n[id]; return n; });
   };
 
-  const setCoverSlot = (propId, slot, galleryOverride) => {
-    const g = galleryOverride || galleries[propId] || [];
-    setProperties(prev => (prev || []).map(p => p.id === propId ? { ...p, coverIdx: slot } : p));
-    setImages(prev => ({ ...prev, [propId]: g[slot] || null }));
-  };
-  const addPhoto = async (propId, file) => {
+  const uploadImage = async (propId, file) => {
     if (!file) return;
-    const g = galleries[propId] || [null, null, null, null, null];
-    const slot = g.findIndex(x => !x);
-    if (slot === -1) { window.alert("Maximum of 5 photos per property."); return; }
     setImgUploading(true);
     try {
       const dataUrl = await compressImage(file);
-      await storage.set(imgKey(propId, slot), dataUrl);
-      const ng = [...g]; ng[slot] = dataUrl;
-      setGalleries(prev => ({ ...prev, [propId]: ng }));
-      const p = properties.find(x => x.id === propId);
-      const ci = Number.isInteger(p?.coverIdx) ? p.coverIdx : 0;
-      if (ng.filter(Boolean).length === 1) setCoverSlot(propId, slot, ng);
-      else if (ci === slot) setImages(prev => ({ ...prev, [propId]: dataUrl }));
+      await storage.set(`coreo-img-${propId}`, dataUrl);
+      setImages(prev => ({ ...prev, [propId]: dataUrl }));
     } catch (e) { console.error(e); window.alert("Could not process that image. Try a different file (JPG or PNG)."); }
     setImgUploading(false);
   };
-  const removePhoto = async (propId, slot) => {
-    try { await storage.set(imgKey(propId, slot), ""); } catch (e) { console.error(e); }
-    const g = [...(galleries[propId] || [null, null, null, null, null])];
-    g[slot] = null;
-    setGalleries(prev => ({ ...prev, [propId]: g }));
-    const p = properties.find(x => x.id === propId);
-    const ci = Number.isInteger(p?.coverIdx) ? p.coverIdx : 0;
-    if (ci === slot) { const first = g.findIndex(Boolean); setCoverSlot(propId, first === -1 ? 0 : first, g); }
+  const removeImage = async (propId) => {
+    try { await storage.set(`coreo-img-${propId}`, ""); } catch (e) { console.error(e); }
+    setImages(prev => ({ ...prev, [propId]: null }));
   };
-  const chooseCover = (propId, slot) => setCoverSlot(propId, slot, galleries[propId]);
 
   const loading = p1 || p2 || p3 || p4 || p5 || p6;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
@@ -799,11 +742,6 @@ export default function CoreoProductionHub() {
   const propDetail = selectedProperty ? properties.find(p => p.id === selectedProperty) : null;
   const specs = propertySpecs?.[selectedProperty] || {};
   const occDetail = occupancyPct(specs);
-  const gal = galleries[selectedProperty];
-  const galLoaded = Array.isArray(gal);
-  const photoList = galLoaded ? gal.map((u, i) => ({ u, i })).filter(x => x.u) : [];
-  const coverIdx = propDetail && Number.isInteger(propDetail.coverIdx) ? propDetail.coverIdx : 0;
-  const leadIdx = galLoaded ? (gal[coverIdx] ? coverIdx : (photoList[0]?.i ?? -1)) : -1;
   const propNotes = notes?.[`${selectedProperty}`] || [];
   const filledCount = ALL_SPEC_IDS.filter(f => specs[f]).length;
   const essFilled = ESSENTIAL_FIELDS.filter(f => specs[f.id]).length;
@@ -1048,49 +986,15 @@ export default function CoreoProductionHub() {
 .dcols{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
 .dcmd{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:18px}
 .dcmd .dedge{width:3px;height:44px;border-radius:2px;flex-shrink:0}
+.dcmd .dimg{position:relative;width:92px;height:66px;border-radius:11px;flex-shrink:0;background-size:cover;background-position:center;cursor:pointer;overflow:hidden;border:1px solid var(--line);display:grid;place-items:center}
+.dcmd .dimg.empty{background:radial-gradient(120% 100% at 50% 0%, color-mix(in srgb,var(--tc) 22%,transparent), transparent 70%),rgba(7,11,30,.5)}
+.dcmd .dimg-glyph{font-size:22px;color:var(--ink-dim);opacity:.55}
+.dcmd .dimg-over{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:600;letter-spacing:.05em;color:#fff;background:rgba(9,13,32,.55);opacity:0;transition:.15s;text-transform:uppercase}
+.dcmd .dimg:hover .dimg-over{opacity:1}
+.dcmd .dimg-x{position:absolute;top:3px;right:3px;z-index:4;width:18px;height:18px;border-radius:5px;background:rgba(9,13,32,.78);border:1px solid rgba(255,80,110,.4);color:#ff8098;cursor:pointer;display:grid;place-items:center;font-size:11px;line-height:1;padding:0}
 .dcmd .docc{display:flex;align-items:center;gap:7px}
 .dcmd .docc .docc-p{font-family:'Space Grotesk';font-size:15px;font-weight:600;line-height:1}
 .dcmd .docc .docc-l{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);font-weight:600;margin-top:2px}
-.gpanel{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-bottom:20px;overflow:hidden}
-.gpanel-h{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:8px}
-.gpanel-h .sec{font-size:11px;color:var(--ink-dim);letter-spacing:.12em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:9px}
-.gpanel-h .sec .ico{color:var(--cyan);font-size:14px}
-.gpanel-h .sec .cnt{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none}
-.gpanel-h .ghint{font-size:10.5px;color:var(--ink-dim)}
-.gbody{padding:16px}
-.gbody .cell{position:relative;border-radius:12px;overflow:hidden;background-size:cover;background-position:center;background-color:#0d1636;cursor:pointer;border:1px solid var(--line)}
-.gbody .cover-badge{position:absolute;top:8px;left:8px;z-index:3;font-size:8.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#04121a;background:linear-gradient(135deg,var(--appr),var(--cyan));padding:3px 8px;border-radius:6px;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-.gbody .acts{position:absolute;top:8px;right:8px;z-index:3;display:flex;gap:5px;opacity:0;transition:.15s}
-.gbody .cell:hover .acts{opacity:1}
-.gbody .acts button{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;cursor:pointer;font-size:12px;backdrop-filter:blur(4px);border:1px solid var(--line-2);background:rgba(9,13,32,.72);color:#fff;line-height:1;font-family:inherit}
-.gbody .acts .setc:hover{border-color:var(--appr);color:var(--appr)}
-.gbody .acts .del:hover{border-color:#ff8098;color:#ff8098}
-.gbody .expand{position:absolute;bottom:8px;right:8px;z-index:2;font-size:9px;color:#fff;background:rgba(9,13,32,.6);padding:3px 7px;border-radius:6px;opacity:0;transition:.15s;backdrop-filter:blur(4px)}
-.gbody .cell:hover .expand{opacity:1}
-.gbody .addtile{border:1.5px dashed var(--line-2);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--cyan);background:rgba(63,179,203,.04);cursor:pointer;transition:.15s;min-height:100%}
-.gbody .addtile:hover{background:rgba(63,179,203,.09);border-color:var(--cyan)}
-.gbody .addtile .p{width:34px;height:34px;border-radius:10px;background:rgba(63,179,203,.12);display:grid;place-items:center;font-size:20px}
-.gbody .addtile span{font-size:11px;font-weight:600;font-family:'Space Grotesk'}
-.lay-a{display:grid;grid-template-columns:1.55fr 1fr;gap:10px;height:340px}
-.lay-a .lead{height:100%}
-.lay-a .side{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px}
-.lay-a .side .cell,.lay-a .side .addtile{min-height:0}
-.gempty{padding:44px 20px;text-align:center}
-.gempty .glyph{font-size:34px;opacity:.4;margin-bottom:10px}
-.gempty .t{font-family:'Space Grotesk';font-size:15px;color:var(--ink-2);margin-bottom:4px}
-.gempty .s{font-size:12px;color:var(--ink-dim);margin-bottom:16px}
-.gempty .gup{display:inline-block;background:linear-gradient(135deg,var(--appr),var(--cyan));color:#04121a;border:none;border-radius:10px;padding:10px 18px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer}
-.lb{position:fixed;inset:0;z-index:1000;background:rgba(4,7,20,.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px}
-.lb-count{font-size:12px;color:var(--ink-dim);position:absolute;top:22px;left:24px}
-.lb-close{position:absolute;top:18px;right:20px;width:38px;height:38px;border-radius:10px;background:rgba(20,30,68,.6);border:1px solid var(--line-2);color:var(--ink);font-size:18px;cursor:pointer;font-family:inherit}
-.lb-stage{max-width:900px;width:100%;height:66vh;background-size:contain;background-position:center;background-repeat:no-repeat;border-radius:12px}
-.lb-arrow{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;border-radius:50%;background:rgba(20,30,68,.65);border:1px solid var(--line-2);color:var(--ink);font-size:20px;cursor:pointer;display:grid;place-items:center;font-family:inherit}
-.lb-arrow.prev{left:24px}
-.lb-arrow.next{right:24px}
-.lb-thumbs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap;justify-content:center}
-.lb-thumbs .t{width:64px;height:44px;border-radius:8px;background-size:cover;background-position:center;cursor:pointer;opacity:.5;border:2px solid transparent;transition:.15s}
-.lb-thumbs .t.on{opacity:1;border-color:var(--cyan)}
-@media (max-width:640px){.lay-a{grid-template-columns:1fr;height:auto}.lay-a .lead{height:220px}.lay-a .side{height:200px}}
 .dcmd .dinfo{flex:1;min-width:0}
 .dcmd .tline{display:flex;align-items:center;gap:8px;margin-bottom:3px}
 .dcmd .nm{font-family:'Space Grotesk';font-size:18px;font-weight:500;letter-spacing:-.01em}
@@ -1157,7 +1061,12 @@ export default function CoreoProductionHub() {
           <button className="back" onClick={() => { setSelectedProperty(null); setEditingSpecs(false); }}>← Back to portfolio</button>
 
           <div className="dcmd">
-            <div className="dedge" style={{ background: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", boxShadow: `0 0 10px ${TYPE_COLORS[propDetail.type] || "transparent"}` }} />
+            <label className={`dimg${images[propDetail.id] ? "" : " empty"}`} style={images[propDetail.id] ? { backgroundImage: `url('${images[propDetail.id]}')` } : { "--tc": TYPE_COLORS[propDetail.type] || "var(--ink-dim)" }} title={images[propDetail.id] ? "Change main image" : "Upload main image"}>
+              {!images[propDetail.id] && <span className="dimg-glyph">▤</span>}
+              <span className="dimg-over">{imgUploading ? "…" : (images[propDetail.id] ? "Change" : "Upload")}</span>
+              {images[propDetail.id] && <button className="dimg-x" title="Remove image" onClick={e => { e.preventDefault(); e.stopPropagation(); if (window.confirm("Remove the main image?")) removeImage(propDetail.id); }}>×</button>}
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(propDetail.id, f); e.target.value = ""; }} />
+            </label>
             <div className="dinfo">
               <div className="tline">
                 <span style={{ color: TYPE_COLORS[propDetail.type] || "var(--ink-dim)", fontSize: 11 }}>#{propDetail.id}</span>
@@ -1185,66 +1094,6 @@ export default function CoreoProductionHub() {
               </div>
             </div>
           </div>
-
-          {/* Gallery */}
-          <div className="gpanel">
-            <div className="gpanel-h">
-              <div className="sec"><span className="ico">◇</span> Gallery <span className="cnt">{galLoaded ? `${photoList.length} / 5 photos` : "loading…"}</span></div>
-              {photoList.length > 0 && <div className="ghint">Hover a photo to set cover or remove</div>}
-            </div>
-            <div className="gbody">
-              {!galLoaded ? (
-                <div className="gempty"><div className="s">Loading photos…</div></div>
-              ) : photoList.length === 0 ? (
-                <div className="gempty">
-                  <div className="glyph">▤</div>
-                  <div className="t">No photos yet</div>
-                  <div className="s">Add up to 5 photos of this property.</div>
-                  <label className="gup">{imgUploading ? "Uploading…" : "Upload photos"}
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) addPhoto(selectedProperty, f); e.target.value = ""; }} />
-                  </label>
-                </div>
-              ) : (
-                <div className="lay-a">
-                  <div className="cell lead" style={{ backgroundImage: `url('${gal[leadIdx]}')` }} onClick={() => setLb(photoList.findIndex(p => p.i === leadIdx))}>
-                    <span className="cover-badge">★ Cover</span>
-                    <div className="acts"><button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, leadIdx); }}>✕</button></div>
-                    <div className="expand">⤢ View</div>
-                  </div>
-                  <div className="side">
-                    {photoList.filter(p => p.i !== leadIdx).slice(0, 4).map(p => (
-                      <div key={p.i} className="cell" style={{ backgroundImage: `url('${p.u}')` }} onClick={() => setLb(photoList.findIndex(x => x.i === p.i))}>
-                        <div className="acts">
-                          <button className="setc" title="Set as cover" onClick={e => { e.stopPropagation(); chooseCover(selectedProperty, p.i); }}>★</button>
-                          <button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, p.i); }}>✕</button>
-                        </div>
-                        <div className="expand">⤢ View</div>
-                      </div>
-                    ))}
-                    {photoList.length < 5 && (
-                      <label className="addtile">
-                        <div className="p">{imgUploading ? "…" : "+"}</div><span>Add photo</span>
-                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) addPhoto(selectedProperty, f); e.target.value = ""; }} />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {lb !== null && photoList[lb] && (
-            <div className="lb" onClick={() => setLb(null)}>
-              <div className="lb-count">{lb + 1} / {photoList.length}</div>
-              <button className="lb-close" onClick={() => setLb(null)}>✕</button>
-              {photoList.length > 1 && <button className="lb-arrow prev" onClick={e => { e.stopPropagation(); setLb((lb - 1 + photoList.length) % photoList.length); }}>‹</button>}
-              <div className="lb-stage" style={{ backgroundImage: `url('${photoList[lb].u}')` }} onClick={e => e.stopPropagation()} />
-              {photoList.length > 1 && <button className="lb-arrow next" onClick={e => { e.stopPropagation(); setLb((lb + 1) % photoList.length); }}>›</button>}
-              <div className="lb-thumbs" onClick={e => e.stopPropagation()}>
-                {photoList.map((p, i) => <div key={i} className={`t${i === lb ? " on" : ""}`} style={{ backgroundImage: `url('${p.u}')` }} onClick={() => setLb(i)} />)}
-              </div>
-            </div>
-          )}
 
           <div className="dcols">
             <div>
