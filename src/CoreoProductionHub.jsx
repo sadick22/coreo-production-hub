@@ -812,9 +812,9 @@ export default function CoreoProductionHub() {
 .search input::placeholder{color:var(--ink-dim)}
 .selx{background:rgba(7,11,30,.6);border:1px solid var(--line);color:var(--ink-2);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:12.5px;cursor:pointer;outline:none}
 .portfolio{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:13px;padding:16px 18px}
-.card{position:relative;background:linear-gradient(180deg,rgba(16,24,56,.6),rgba(11,17,42,.5));border:1px solid var(--line);border-radius:16px;cursor:pointer;transition:.18s;overflow:hidden}
+.card{position:relative;background:linear-gradient(180deg,rgba(16,24,56,.6),rgba(11,17,42,.5));border:1px solid var(--line);border-radius:16px;cursor:pointer;transition:.18s;overflow:visible}
 .card:hover{border-color:var(--line-2);transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.45)}
-.card-img{position:relative;height:178px;background-size:cover;background-position:center;background-color:#0d1636}
+.card-img{position:relative;height:178px;background-size:cover;background-position:center;background-color:#0d1636;overflow:hidden;border-radius:16px 16px 0 0}
 .card-img .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,11,30,.12) 0%,rgba(7,11,30,0) 32%,rgba(7,11,30,.22) 60%,rgba(9,13,32,.88) 100%)}
 .card-img.noimg{display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 0%, color-mix(in srgb,var(--tc) 20%,transparent), transparent 68%),linear-gradient(180deg,rgba(16,24,56,.9),rgba(11,17,42,.9))}
 .card-img .noimg-inner{text-align:center;color:var(--ink-dim);transform:translateY(-14px)}
@@ -1284,8 +1284,9 @@ export default function CoreoProductionHub() {
                   const tcol = TYPE_COLORS[prop.type] || "#7581b0";
                   const occ = occupancyPct(propertySpecs?.[prop.id] || {});
                   const img = images[prop.id];
+                  const menuOpen = !!showStatusMenu && showStatusMenu.startsWith(`dash-${prop.id}-`);
                   return (
-                    <div key={prop.id} className="card" style={{ "--tc": tcol }} onClick={() => setSelectedProperty(prop.id)}>
+                    <div key={prop.id} className="card" style={{ "--tc": tcol, ...(menuOpen ? { zIndex: 30 } : null) }} onClick={() => setSelectedProperty(prop.id)}>
                       <div className={`card-img${img ? "" : " noimg"}`} style={img ? { backgroundImage: `url('${img}')` } : undefined}>
                         {img && <div className="scrim" />}
                         <span className="tbadge">{prop.type}</span>
