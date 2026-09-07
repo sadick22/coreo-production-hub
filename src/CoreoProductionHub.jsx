@@ -445,11 +445,12 @@ function OccRing({ pct, size = 20 }) {
 
 // ─── Hooks & Components ───
 
-function usePersistedState(key, defaultVal) {
+function usePersistedState(key, defaultVal, authed) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const skipNext = useRef(false);
   useEffect(() => {
+    if (!authed) return;
     const unsub = storage.subscribe(key, (val) => {
       if (skipNext.current) { skipNext.current = false; return; }
       if (val !== null) { try { setData(JSON.parse(val)); } catch { setData(defaultVal); } }
@@ -457,7 +458,7 @@ function usePersistedState(key, defaultVal) {
       setLoading(false);
     });
     return unsub;
-  }, []);
+  }, [authed]);
   const update = useCallback(async (v) => {
     const val = typeof v === "function" ? v(data) : v;
     setData(val);
@@ -622,15 +623,7 @@ function BriefPanel({ brief, onClose }) {
 // ─── Main ───
 
 export default function CoreoProductionHub() {
-  const [properties, setProperties, p1] = usePersistedState("coreo-properties", INITIAL_PROPERTIES);
-  const [assetStatuses, setAssetStatuses, p2] = usePersistedState("coreo-asset-statuses", {});
-  const [propertySpecs, setPropertySpecs, p3] = usePersistedState("coreo-property-specs-v2", {});
-  const [notes, setNotes, p4] = usePersistedState("coreo-notes", {});
-  const [assetLinks, setAssetLinks, p5] = usePersistedState("coreo-asset-links", {});
-  const [settings, setSettings, p6] = usePersistedState("coreo-settings", {});
-
-  const isMobile = useIsMobile();
-    const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [role, setRole] = useState(null);
   const isViewer = role === "viewer";
@@ -643,6 +636,15 @@ export default function CoreoProductionHub() {
     });
     return unsub;
   }, []);
+
+  const [properties, setProperties, p1] = usePersistedState("coreo-properties", INITIAL_PROPERTIES, authed);
+  const [assetStatuses, setAssetStatuses, p2] = usePersistedState("coreo-asset-statuses", {}, authed);
+  const [propertySpecs, setPropertySpecs, p3] = usePersistedState("coreo-property-specs-v2", {}, authed);
+  const [notes, setNotes, p4] = usePersistedState("coreo-notes", {}, authed);
+  const [assetLinks, setAssetLinks, p5] = usePersistedState("coreo-asset-links", {}, authed);
+  const [settings, setSettings, p6] = usePersistedState("coreo-settings", {}, authed);
+
+  const isMobile = useIsMobile();
 
   // Property images live in their own Firestore docs (one per property) to keep
   // the properties array tiny and avoid the 1MB per-document limit. They change
