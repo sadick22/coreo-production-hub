@@ -636,6 +636,34 @@ export default function CoreoProductionHub() {
     return () => { cancelled = true; };
   }, [properties]);
 
+  const [view, setView] = useState("dashboard");
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterZone, setFilterZone] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [editingSpecs, setEditingSpecs] = useState(false);
+  const [specMode, setSpecMode] = useState("essential");
+  const [noteInput, setNoteInput] = useState("");
+  const [showStatusMenu, setShowStatusMenu] = useState(null);
+  const [editingLink, setEditingLink] = useState(null);
+  const [linkInput, setLinkInput] = useState("");
+  const [activeBrief, setActiveBrief] = useState(null);
+  const [specTab, setSpecTab] = useState("general");
+  const [showAddModal, setShowAddModal] = useState(false);
+    const TYPE_COLORS = settings?.typeColors || DEFAULT_TYPE_COLORS;
+  const ZONE_OPTIONS = settings?.zones || DEFAULT_ZONES;
+  const emptyProp = { name: "", location: "", type: Object.keys(TYPE_COLORS)[0], zone: ZONE_OPTIONS[0] };
+  const [newProp, setNewProp] = useState(emptyProp);
+  const [addingZone, setAddingZone] = useState(false);
+  const [newZone, setNewZone] = useState("");
+  const [addingType, setAddingType] = useState(false);
+  const [newType, setNewType] = useState("");
+  const [images, setImages] = useState({});
+  const [galleries, setGalleries] = useState({});
+  const [imgUploading, setImgUploading] = useState(false);
+  const [lb, setLb] = useState(null);
+
   // Full gallery (all 5 slots) — loaded only when a property detail is opened.
   useEffect(() => {
     if (!selectedProperty || galleries[selectedProperty]) return;
@@ -666,33 +694,6 @@ export default function CoreoProductionHub() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lb, selectedProperty, galleries]);
-  const [view, setView] = useState("dashboard");
-  const [selectedProperty, setSelectedProperty] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterZone, setFilterZone] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [editingSpecs, setEditingSpecs] = useState(false);
-  const [specMode, setSpecMode] = useState("essential");
-  const [noteInput, setNoteInput] = useState("");
-  const [showStatusMenu, setShowStatusMenu] = useState(null);
-  const [editingLink, setEditingLink] = useState(null);
-  const [linkInput, setLinkInput] = useState("");
-  const [activeBrief, setActiveBrief] = useState(null);
-  const [specTab, setSpecTab] = useState("general");
-  const [showAddModal, setShowAddModal] = useState(false);
-    const TYPE_COLORS = settings?.typeColors || DEFAULT_TYPE_COLORS;
-  const ZONE_OPTIONS = settings?.zones || DEFAULT_ZONES;
-  const emptyProp = { name: "", location: "", type: Object.keys(TYPE_COLORS)[0], zone: ZONE_OPTIONS[0] };
-  const [newProp, setNewProp] = useState(emptyProp);
-  const [addingZone, setAddingZone] = useState(false);
-  const [newZone, setNewZone] = useState("");
-  const [addingType, setAddingType] = useState(false);
-  const [newType, setNewType] = useState("");
-  const [images, setImages] = useState({});
-  const [galleries, setGalleries] = useState({});
-  const [imgUploading, setImgUploading] = useState(false);
-  const [lb, setLb] = useState(null);
   const addProperty = () => {
     const name = newProp.name.trim();
     if (!name) return;
