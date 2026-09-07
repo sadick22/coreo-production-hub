@@ -478,23 +478,35 @@ function useIsMobile() {
 }
 
 function LoginScreen({ onLogin }) {
+  const [loginRole, setLoginRole] = useState("admin");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const isViewerLogin = loginRole === "viewer";
 
   const submit = async (e) => {
     if (e) e.preventDefault();
-    if (!username.trim() || !password) return;
+    const user = isViewerLogin ? "viewer" : username.trim();
+    if (!user || !password) return;
     setLoading(true); setError("");
     try {
-      await loginWithUsername(username, password);
+      await loginWithUsername(user, password);
       onLogin();
     } catch (err) {
       setError(err.code === "auth/invalid-credential" ? "Invalid username or password" : err.code === "auth/too-many-requests" ? "Too many attempts — try again later" : "Login failed");
       setLoading(false);
     }
   };
+
+  const toggleBtn = (id, label) => (
+    <button key={id} onClick={() => { setLoginRole(id); setError(""); }} style={{
+      flex: 1, padding: "9px 0", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+      border: "none", borderRadius: 8,
+      background: loginRole === id ? "linear-gradient(135deg, #35f0a0, #3fb3cb)" : "transparent",
+      color: loginRole === id ? "#04121a" : "#7581b0",
+    }}>{label}</button>
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse at 50% 30%, #0e1638, #070b1e)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -504,10 +516,19 @@ function LoginScreen({ onLogin }) {
           <div style={{ fontSize: 12, color: "#7581b0", letterSpacing: ".05em" }}>Exclusive property marketing assets</div>
         </div>
         <div style={{ background: "rgba(20,30,68,0.55)", border: "1px solid rgba(120,150,255,0.12)", borderRadius: 16, padding: 24, backdropFilter: "blur(10px)" }}>
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#7581b0", marginBottom: 6, fontWeight: 600 }}>Username</label>
-            <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Enter username" autoFocus autoComplete="username" style={{ width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+          <div style={{ display: "flex", gap: 4, padding: 4, background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", borderRadius: 11, marginBottom: 20 }}>
+            {toggleBtn("admin", "Admin")}
+            {toggleBtn("viewer", "Viewer")}
           </div>
+          {!isViewerLogin && (
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#7581b0", marginBottom: 6, fontWeight: 600 }}>Username</label>
+              <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Enter username" autoFocus autoComplete="username" style={{ width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+            </div>
+          )}
+          {isViewerLogin && (
+            <div style={{ marginBottom: 18, fontSize: 12, color: "#7581b0", background: "rgba(7,11,30,.4)", border: "1px solid rgba(120,150,255,.1)", borderRadius: 10, padding: "10px 13px" }}>Signing in as <span style={{ color: "#3fb3cb", fontWeight: 600 }}>Viewer</span> — read-only access</div>
+          )}
           <div style={{ marginBottom: 22 }}>
             <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#7581b0", marginBottom: 6, fontWeight: 600 }}>Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} placeholder="Enter password" autoComplete="current-password" style={{ width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
@@ -530,15 +551,15 @@ function ProgressBar({ value, max, color = "#6b8afd", height = 4 }) {
   );
 }
 
-function StatusBadge({ status, onClick, small, disabled }) {
+function StatusBadge({ status, onClick, small, disabled, readOnly }) {
   const s = STATUSES.find(st => st.id === status) || STATUSES[0];
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button onClick={readOnly ? undefined : onClick} disabled={disabled || readOnly} style={{
       background: s.bg, color: s.color, border: `1px solid ${s.color}22`, borderRadius: 4,
       padding: small ? "2px 6px" : "4px 10px", fontSize: small ? 10 : 11, fontWeight: 500,
-      cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", letterSpacing: "0.02em", whiteSpace: "nowrap",
-      opacity: disabled ? 0.4 : 1,
-    }}>{s.label}{!disabled && " ▾"}</button>
+      cursor: readOnly ? "default" : disabled ? "not-allowed" : "pointer", fontFamily: "inherit", letterSpacing: "0.02em", whiteSpace: "nowrap",
+      opacity: (disabled && !readOnly) ? 0.4 : 1,
+    }}>{s.label}{!disabled && !readOnly && " ▾"}</button>
   );
 }
 
@@ -611,9 +632,15 @@ export default function CoreoProductionHub() {
   const isMobile = useIsMobile();
     const [authed, setAuthed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [role, setRole] = useState(null);
+  const isViewer = role === "viewer";
 
   useEffect(() => {
-    const unsub = onAuthChange(user => { setAuthed(!!user); setAuthChecked(true); });
+    const unsub = onAuthChange(user => {
+      setAuthed(!!user);
+      setAuthChecked(true);
+      setRole(user ? (user.email === "viewer@coreo.hub" ? "viewer" : "admin") : null);
+    });
     return unsub;
   }, []);
 
@@ -695,6 +722,7 @@ export default function CoreoProductionHub() {
     return () => window.removeEventListener("keydown", onKey);
   }, [lb, selectedProperty, galleries]);
   const addProperty = () => {
+    if (isViewer) return;
     const name = newProp.name.trim();
     if (!name) return;
     const id = (properties?.reduce((m, p) => Math.max(m, p.id), 0) || 0) + 1;
@@ -702,6 +730,7 @@ export default function CoreoProductionHub() {
     setShowAddModal(false); setNewProp(emptyProp);
   };
   const removeProperty = (id) => {
+    if (isViewer) return;
     const p = properties.find(x => x.id === id);
     if (!window.confirm(`Remove "${p?.name}" from the exclusive portfolio? This clears its tracking.`)) return;
     setProperties(prev => (prev || []).filter(x => x.id !== id));
@@ -713,11 +742,12 @@ export default function CoreoProductionHub() {
 
   const setCoverSlot = (propId, slot, galleryOverride) => {
     const g = galleryOverride || galleries[propId] || [];
+    if (isViewer) return;
     setProperties(prev => (prev || []).map(p => p.id === propId ? { ...p, coverIdx: slot } : p));
     setImages(prev => ({ ...prev, [propId]: g[slot] || null }));
   };
   const addPhoto = async (propId, file) => {
-    if (!file) return;
+    if (isViewer || !file) return;
     const g = galleries[propId] || [null, null, null, null, null];
     const slot = g.findIndex(x => !x);
     if (slot === -1) { window.alert("Maximum of 5 photos per property."); return; }
@@ -735,6 +765,7 @@ export default function CoreoProductionHub() {
     setImgUploading(false);
   };
   const removePhoto = async (propId, slot) => {
+    if (isViewer) return;
     try { await storage.set(imgKey(propId, slot), ""); } catch (e) { console.error(e); }
     const g = [...(galleries[propId] || [null, null, null, null, null])];
     g[slot] = null;
@@ -748,12 +779,12 @@ export default function CoreoProductionHub() {
   const loading = p1 || p2 || p3 || p4 || p5 || p6;
   const getStatus = (pid, aid) => assetStatuses?.[`${pid}-${aid}`] || "not_started";
     const getLinks = (pid, aid) => { const v = assetLinks?.[`${pid}-${aid}`]; if (!v) return []; if (typeof v === "string") return v.trim() ? [v] : []; return v; };
-  const setStatusDirect = (pid, aid, sid) => { setAssetStatuses(prev => ({ ...prev, [`${pid}-${aid}`]: sid })); setShowStatusMenu(null); };
-  const saveLink = (pid, aid) => { if (!linkInput.trim()) return; setAssetLinks(prev => ({ ...prev, [`${pid}-${aid}`]: [...(prev?.[`${pid}-${aid}`] || []), linkInput.trim()] })); setEditingLink(null); setLinkInput(""); };
-  const removeLink = (pid, aid, idx) => { setAssetLinks(prev => { const arr = [...(prev?.[`${pid}-${aid}`] || [])]; arr.splice(idx, 1); return { ...prev, [`${pid}-${aid}`]: arr }; }); };
+  const setStatusDirect = (pid, aid, sid) => { if (isViewer) return; setAssetStatuses(prev => ({ ...prev, [`${pid}-${aid}`]: sid })); setShowStatusMenu(null); };
+  const saveLink = (pid, aid) => { if (isViewer || !linkInput.trim()) return; setAssetLinks(prev => ({ ...prev, [`${pid}-${aid}`]: [...(prev?.[`${pid}-${aid}`] || []), linkInput.trim()] })); setEditingLink(null); setLinkInput(""); };
+  const removeLink = (pid, aid, idx) => { if (isViewer) return; setAssetLinks(prev => { const arr = [...(prev?.[`${pid}-${aid}`] || [])]; arr.splice(idx, 1); return { ...prev, [`${pid}-${aid}`]: arr }; }); };
   const detectLinkLabel = (url) => { if (!url) return "Link"; const u = url.toLowerCase(); if (u.includes("drive.google")) return "Drive"; if (u.includes("dropbox")) return "Dropbox"; if (u.includes("vimeo")) return "Vimeo"; if (u.includes("youtube") || u.includes("youtu.be")) return "YouTube"; if (u.includes("canva")) return "Canva"; if (u.includes(".pdf")) return "PDF"; if (u.includes("figma")) return "Figma"; return "Link"; };
   const getProgress = (id) => ASSET_TYPES.reduce((n, a) => n + (getStatus(id, a.id) === "approved" ? 1 : 0), 0);
-  const addNote = (pid) => { if (!noteInput.trim()) return; setNotes(prev => ({ ...prev, [`${pid}`]: [...(prev?.[`${pid}`] || []), { text: noteInput.trim(), date: new Date().toISOString() }] })); setNoteInput(""); };
+  const addNote = (pid) => { if (isViewer || !noteInput.trim()) return; setNotes(prev => ({ ...prev, [`${pid}`]: [...(prev?.[`${pid}`] || []), { text: noteInput.trim(), date: new Date().toISOString() }] })); setNoteInput(""); };
   const isBlocked = (pid, aid) => (DEPS[aid] || []).some(d => getStatus(pid, d) !== "approved");
 
   const stats = useMemo(() => {
@@ -811,7 +842,7 @@ export default function CoreoProductionHub() {
   const iStyle = { width: "100%", background: "rgba(7,11,30,.6)", border: "1px solid rgba(120,150,255,.12)", color: "#eaf0ff", borderRadius: 10, padding: "9px 12px", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", outline: "none" };
   const selStyle = { background: "rgba(7,11,30,.6)", color: "#aeb8e4", border: "1px solid rgba(120,150,255,.12)", borderRadius: 10, padding: "8px 12px", fontSize: 11, fontFamily: "inherit", cursor: "pointer" };
 
-  const setSpec = (fieldId, val) => setPropertySpecs(prev => ({ ...prev, [selectedProperty]: { ...specs, [fieldId]: val } }));
+  const setSpec = (fieldId, val) => { if (isViewer) return; setPropertySpecs(prev => ({ ...prev, [selectedProperty]: { ...specs, [fieldId]: val } })); };
 
   const renderField = (field) => (
     <div key={field.id} className="spec-field" style={field.multiline && editingSpecs ? { gridColumn: "1 / -1" } : {}}>
@@ -851,6 +882,7 @@ export default function CoreoProductionHub() {
 .pill:hover{color:var(--ink);background:rgba(120,150,255,0.07)}
 .pill.active{color:#04121a;background:linear-gradient(135deg,var(--cyan),#3d9bb5);box-shadow:0 0 15px rgba(34,211,238,.22);font-weight:600}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.viewer-badge{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);background:color-mix(in srgb,var(--cyan) 15%,transparent);border:1px solid color-mix(in srgb,var(--cyan) 35%,transparent);padding:5px 11px;border-radius:8px}
 .btn-primary{font-family:inherit;font-size:12.5px;font-weight:600;color:#04121a;cursor:pointer;background:linear-gradient(135deg,var(--appr),var(--cyan));border:none;padding:10px 16px;border-radius:10px;display:flex;align-items:center;gap:7px;box-shadow:0 0 18px rgba(53,240,160,.22);transition:.18s}
 .btn-primary:hover{transform:translateY(-1px)}
 .wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:20px 22px 60px;font-family:'Inter',sans-serif;color:var(--ink)}
@@ -1142,12 +1174,13 @@ export default function CoreoProductionHub() {
           </div>
         </div>
         <div className="pills">
-          {[{ id: "dashboard", label: "Dashboard" }, { id: "settings", label: "Settings" }].map(v => (
+          {[{ id: "dashboard", label: "Dashboard" }, { id: "settings", label: "Settings" }].filter(v => v.id !== "settings" || !isViewer).map(v => (
             <button key={v.id} className={"pill" + ((view === v.id && !selectedProperty) ? " active" : "")} onClick={() => { setView(v.id); setSelectedProperty(null); }}>{v.label}</button>
           ))}
         </div>
         <div className="nav-right">
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Exclusive Property</button>
+          {isViewer && <span className="viewer-badge">Viewer</span>}
+          {!isViewer && <button className="btn-primary" onClick={() => setShowAddModal(true)}><span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Exclusive Property</button>}
           <button onClick={() => { if (window.confirm("Sign out?")) logout(); }} style={{ background: "transparent", border: "1px solid rgba(120,150,255,0.22)", color: "#7581b0", borderRadius: 9, padding: "8px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
         </div>
       </div>
@@ -1200,29 +1233,37 @@ export default function CoreoProductionHub() {
                 <div className="gempty">
                   <div className="glyph">▤</div>
                   <div className="t">No photos yet</div>
-                  <div className="s">Add up to 5 photos of this property.</div>
-                  <label className="gup">{imgUploading ? "Uploading…" : "Upload photos"}
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) addPhoto(selectedProperty, f); e.target.value = ""; }} />
-                  </label>
+                  {!isViewer ? (
+                    <>
+                      <div className="s">Add up to 5 photos of this property.</div>
+                      <label className="gup">{imgUploading ? "Uploading…" : "Upload photos"}
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) addPhoto(selectedProperty, f); e.target.value = ""; }} />
+                      </label>
+                    </>
+                  ) : (
+                    <div className="s">No photos have been added for this property.</div>
+                  )}
                 </div>
               ) : (
                 <div className="lay-a">
                   <div className="cell lead" style={{ backgroundImage: `url('${gal[leadIdx]}')` }} onClick={() => setLb(photoList.findIndex(p => p.i === leadIdx))}>
                     <span className="cover-badge">★ Cover</span>
-                    <div className="acts"><button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, leadIdx); }}>✕</button></div>
+                    {!isViewer && <div className="acts"><button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, leadIdx); }}>✕</button></div>}
                     <div className="expand">⤢ View</div>
                   </div>
                   <div className="side">
                     {photoList.filter(p => p.i !== leadIdx).slice(0, 4).map(p => (
                       <div key={p.i} className="cell" style={{ backgroundImage: `url('${p.u}')` }} onClick={() => setLb(photoList.findIndex(x => x.i === p.i))}>
-                        <div className="acts">
-                          <button className="setc" title="Set as cover" onClick={e => { e.stopPropagation(); chooseCover(selectedProperty, p.i); }}>★</button>
-                          <button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, p.i); }}>✕</button>
-                        </div>
+                        {!isViewer && (
+                          <div className="acts">
+                            <button className="setc" title="Set as cover" onClick={e => { e.stopPropagation(); chooseCover(selectedProperty, p.i); }}>★</button>
+                            <button className="del" title="Remove" onClick={e => { e.stopPropagation(); if (window.confirm("Remove this photo?")) removePhoto(selectedProperty, p.i); }}>✕</button>
+                          </div>
+                        )}
                         <div className="expand">⤢ View</div>
                       </div>
                     ))}
-                    {photoList.length < 5 && (
+                    {!isViewer && photoList.length < 5 && (
                       <label className="addtile">
                         <div className="p">{imgUploading ? "…" : "+"}</div><span>Add photo</span>
                         <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) addPhoto(selectedProperty, f); e.target.value = ""; }} />
@@ -1269,11 +1310,17 @@ export default function CoreoProductionHub() {
                           </div>
                         </div>
                         <div className="aright">
-                          <button className="brief-btn" onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))}>Generate brief</button>
+                          {!isViewer && <button className="brief-btn" onClick={() => setActiveBrief(generateBrief(asset.id, propDetail, specs))}>Generate brief</button>}
                           <div style={{ position: "relative" }}>
-                            <StatusBadge status={status} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === `${propDetail.id}-${asset.id}` ? null : `${propDetail.id}-${asset.id}`); }} />
-                            {showStatusMenu === `${propDetail.id}-${asset.id}` && (
-                              <StatusMenu current={status} onSelect={sid => setStatusDirect(propDetail.id, asset.id, sid)} />
+                            {isViewer ? (
+                              <StatusBadge status={status} readOnly />
+                            ) : (
+                              <>
+                                <StatusBadge status={status} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === `${propDetail.id}-${asset.id}` ? null : `${propDetail.id}-${asset.id}`); }} />
+                                {showStatusMenu === `${propDetail.id}-${asset.id}` && (
+                                  <StatusMenu current={status} onSelect={sid => setStatusDirect(propDetail.id, asset.id, sid)} />
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1283,10 +1330,10 @@ export default function CoreoProductionHub() {
                           <div key={li} className="lkrow">
                             <span className="lktag">{detectLinkLabel(lk)}</span>
                             <a href={lk} target="_blank" rel="noopener noreferrer" className="lkurl">{lk.replace(/^https?:\/\//, "").slice(0, 55)}{lk.length > 62 ? "..." : ""}</a>
-                            <button className="lkdel" title="Remove link" onClick={() => removeLink(propDetail.id, asset.id, li)}>×</button>
+                            {!isViewer && <button className="lkdel" title="Remove link" onClick={() => removeLink(propDetail.id, asset.id, li)}>×</button>}
                           </div>
                         ))}
-                        {isAdding ? (
+                        {!isViewer && (isAdding ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
                             <input value={linkInput} onChange={e => setLinkInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveLink(propDetail.id, asset.id)} placeholder="Paste link (Drive, Dropbox, Vimeo...)" autoFocus className="dinput" style={{ flex: 1, minWidth: 160, fontSize: 11, padding: "6px 10px" }} />
                             <button className="link-save" onClick={() => saveLink(propDetail.id, asset.id)}>Save</button>
@@ -1294,7 +1341,7 @@ export default function CoreoProductionHub() {
                           </div>
                         ) : (
                           <div className="lkadd"><span onClick={() => { setEditingLink(`add-${propDetail.id}-${asset.id}`); setLinkInput(""); }}>+ Add link</span></div>
-                        )}
+                        ))}
                       </div>
                     </div>
                   );
@@ -1312,7 +1359,7 @@ export default function CoreoProductionHub() {
                         <button key={m.id} className={specMode === m.id ? "on" : ""} onClick={() => setSpecMode(m.id)}>{m.label}</button>
                       ))}
                     </div>
-                    <button className={`edit-btn${editingSpecs ? " editing" : ""}`} onClick={() => setEditingSpecs(!editingSpecs)}>{editingSpecs ? "Done ✓" : "Edit"}</button>
+                    {!isViewer && <button className={`edit-btn${editingSpecs ? " editing" : ""}`} onClick={() => setEditingSpecs(!editingSpecs)}>{editingSpecs ? "Done ✓" : "Edit"}</button>}
                   </div>
                 </div>
                 <div className="rbody">
@@ -1365,10 +1412,12 @@ export default function CoreoProductionHub() {
                   <div className="rsec"><span className="rico">✎</span> Notes</div>
                 </div>
                 <div className="rbody">
+                  {!isViewer && (
                   <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                     <input value={noteInput} onChange={e => setNoteInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNote(selectedProperty)} placeholder="Add a note…" className="dinput" style={{ flex: 1, fontSize: 11, padding: "6px 10px" }} />
                     <button className="note-add" style={{ padding: "6px 10px", fontSize: 10 }} onClick={() => addNote(selectedProperty)}>Add</button>
                   </div>
+                  )}
                   {propNotes.length === 0 ? <div style={{ fontSize: 11, color: "var(--ink-dim)" }}>No notes yet</div> : (
                     <div>
                       {[...propNotes].sort((a, b) => new Date(b.date) - new Date(a.date)).map((n, i) => (
@@ -1442,7 +1491,7 @@ export default function CoreoProductionHub() {
                       <div className={`card-img${img ? "" : " noimg"}`} style={img ? { backgroundImage: `url('${img}')` } : undefined}>
                         {img && <div className="scrim" />}
                         <span className="tbadge">{prop.type}</span>
-                        <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>
+                        {!isViewer && <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>}
                         {occ !== null && (
                           <div className="occ"><OccRing pct={occ} /><div className="otxt"><div className="opct" style={{ color: occColor(occ) }}>{occ}%</div><div className="olab">Occupied</div></div></div>
                         )}
@@ -1455,7 +1504,7 @@ export default function CoreoProductionHub() {
                             const key = `dash-${prop.id}-${asset.id}`;
                             const ok = getStatus(prop.id, asset.id) === "approved";
                             return (
-                              <div key={asset.id} className="seg" title={`${asset.label} — ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); setShowStatusMenu(showStatusMenu === key ? null : key); }}>
+                              <div key={asset.id} className="seg" title={`${asset.label} — ${ok ? "Approved" : "Not done"}`} onClick={e => { e.stopPropagation(); if (isViewer) return; setShowStatusMenu(showStatusMenu === key ? null : key); }}>
                                 <div className="bar" style={{ background: ok ? "#0e1d60" : "#5b6384", border: ok ? "1px solid rgba(130,150,220,0.6)" : "1px solid transparent" }} />
                                 <div className="cap">{asset.short}</div>
                                 {showStatusMenu === key && <StatusMenu current={getStatus(prop.id, asset.id)} onSelect={sid => setStatusDirect(prop.id, asset.id, sid)} alignRight={false} />}
@@ -1471,9 +1520,11 @@ export default function CoreoProductionHub() {
                     </div>
                   );
                 })}
-                <div className="add-card" onClick={() => setShowAddModal(true)}>
-                  <div className="plus">+</div><span>Add Exclusive Property</span><small>New listing to track through production</small>
-                </div>
+                {!isViewer && (
+                  <div className="add-card" onClick={() => setShowAddModal(true)}>
+                    <div className="plus">+</div><span>Add Exclusive Property</span><small>New listing to track through production</small>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1545,7 +1596,7 @@ export default function CoreoProductionHub() {
             </div>
           )}
         </div>
- ) : view === "settings" ? (
+ ) : (view === "settings" && !isViewer) ? (
         <div className="wrap">
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <div className="setg-h">Settings</div>
