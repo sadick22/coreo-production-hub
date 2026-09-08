@@ -1518,7 +1518,7 @@ export default function CoreoProductionHub() {
                         </div>
                         )}
                         <div className="cardfoot" style={isViewer ? { marginTop: 0, paddingTop: 0, borderTop: "none" } : undefined}>
-                          <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>
+                                                    {!isViewer && <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>}
                           <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>#{prop.id}</div>
                         </div>
                       </div>
