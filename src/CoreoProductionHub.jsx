@@ -1440,6 +1440,7 @@ export default function CoreoProductionHub() {
       ) : view === "dashboard" ? (
         <div className="wrap">
           {(() => {
+            if (isViewer) return null;
             const total = stats.total, done = stats.done;
             const pct = total ? Math.round(done / total * 100) : 0;
             const attention = (properties || []).filter(p => getStatus(p.id, "photos") === "approved" && ["teaser","overview","brochure","listing"].some(k => getStatus(p.id, k) !== "approved")).length;
@@ -1494,13 +1495,14 @@ export default function CoreoProductionHub() {
                         {img && <div className="scrim" />}
                         <span className="tbadge">{prop.type}</span>
                         {!isViewer && <button className="remove" title="Remove property" onClick={e => { e.stopPropagation(); removeProperty(prop.id); }}>×</button>}
-                        {occ !== null && (
+                        {!isViewer && occ !== null && (
                           <div className="occ"><OccRing pct={occ} /><div className="otxt"><div className="opct" style={{ color: occColor(occ) }}>{occ}%</div><div className="olab">Occupied</div></div></div>
                         )}
                         {!img && <div className="noimg-inner"><div className="glyph">▤</div><div className="t">No image yet</div></div>}
                         <div className="overlay-txt"><h3>{prop.name}</h3><div className="oloc">⚲ {prop.location} · {prop.zone}</div></div>
                       </div>
                       <div className="card-body">
+                        {!isViewer && (
                         <div className="strip">
                           {ASSET_TYPES.map(asset => {
                             const key = `dash-${prop.id}-${asset.id}`;
@@ -1514,7 +1516,8 @@ export default function CoreoProductionHub() {
                             );
                           })}
                         </div>
-                        <div className="cardfoot">
+                        )}
+                        <div className="cardfoot" style={isViewer ? { marginTop: 0, paddingTop: 0, borderTop: "none" } : undefined}>
                           <div style={{ fontFamily: "'Space Grotesk'", fontSize: 13 }}><b style={{ color: "var(--appr)" }}>{doneCount}</b>/5 <span style={{ fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase", letterSpacing: ".08em", marginLeft: 4 }}>Approved</span></div>
                           <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>#{prop.id}</div>
                         </div>
@@ -1531,6 +1534,7 @@ export default function CoreoProductionHub() {
             </div>
 
             <div className="side">
+              {!isViewer && (
               <div className="panel">
                 <div className="panel-h"><div className="t"><span className="ico">▤</span> Production Pipeline</div><div className="meta">approved by asset</div></div>
                 <div style={{ padding: "6px 0" }}>
@@ -1548,6 +1552,7 @@ export default function CoreoProductionHub() {
                 </div>
                 <div className="legend"><span><i style={{ background: "#5b6384" }} />Not done</span><span><i style={{ background: "#0e1d60", border: "1px solid rgba(130,150,220,0.6)" }} />Approved</span></div>
               </div>
+              )}
 
               <div className="panel">
                 <div className="panel-h"><div className="t"><span className="ico">◱</span> Zones</div><div className="meta">{zones.length} active</div></div>
