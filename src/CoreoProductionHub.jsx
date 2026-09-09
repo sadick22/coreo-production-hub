@@ -1209,6 +1209,7 @@ export default function CoreoProductionHub() {
                   <div><div className="docc-p" style={{ color: occColor(occDetail) }}>{occDetail}%</div><div className="docc-l">Occupied</div></div>
                 </div>
               )}
+                {!isViewer && (<>
               <div className="dmini">
                 {ASSET_TYPES.map(a => {
                   const ok = getStatus(propDetail.id, a.id) === "approved";
@@ -1219,6 +1220,7 @@ export default function CoreoProductionHub() {
                 <div className="dbig" style={{ color: getProgress(propDetail.id) === 5 ? "var(--appr)" : "var(--cyan)" }}>{getProgress(propDetail.id)}<span>/5</span></div>
                 <div className="dlab">Approved</div>
               </div>
+              </>)}
             </div>
           </div>
 
